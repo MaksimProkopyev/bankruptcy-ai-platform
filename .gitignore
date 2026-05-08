@@ -30,3 +30,12 @@ miniodata/
 
 # Uploads
 uploads/
+.env
+*.env
+.env.local
+.env.production
+node_modules/
+.next/
+__pycache__/
+*.pyc
+.venv/

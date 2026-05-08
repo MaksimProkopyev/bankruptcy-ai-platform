@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "sourcecraft": {
+      "type": "streamable-http",
+      "url": "https://api.sourcecraft.tech/mcp",
+      "disabled": false,
+      "headers": {},
+      "disabledTools": [],
+      "timeout": 60,
+      "alwaysAllow": []
+    },
+    "yandex-cloud-toolkit": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@yandex-cloud/mcp",
+        "-s",
+        "toolkit",
+        "-p",
+        "",
+        "-H",
+        "Cloud-Id:",
+        "",
+        "-H",
+        "Folder-Id:",
+        ""
+      ]
+    }
+  }
+}

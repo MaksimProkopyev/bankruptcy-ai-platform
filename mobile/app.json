@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "Банкротство.AI",
+    "slug": "bankruptcy-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": { "image": "./assets/splash.png", "resizeMode": "contain", "backgroundColor": "#4F46E5" },
+    "ios": { "supportsTablet": false, "bundleIdentifier": "ai.bankruptcy.app", "infoPlist": { "NSCallDirectoryUsageDescription": "Для блокировки звонков коллекторов" } },
+    "android": { "package": "ai.bankruptcy.app", "permissions": ["READ_PHONE_STATE", "READ_CALL_LOG", "READ_CONTACTS", "RECEIVE_SMS"] },
+    "plugins": ["expo-router"]
+  }
+}

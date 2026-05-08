@@ -1,0 +1,110 @@
+# LLM Layer Configuration — Банкротство.AI
+# Task routing: task_type → primary provider + fallback chain
+
+providers:
+  claude:
+    name: claude
+    enabled: true
+    default_model: "claude-sonnet-4-20250514"
+    api_key_env: "ANTHROPIC_API_KEY"
+  openai:
+    name: openai
+    enabled: true
+    default_model: "gpt-4o-mini"
+    api_key_env: "OPENAI_API_KEY"
+  gemini:
+    name: gemini
+    enabled: true
+    default_model: "gemini-2.0-flash"
+    api_key_env: "GOOGLE_AI_API_KEY"
+    extra:
+      access_mode: "direct"
+  deepseek:
+    name: deepseek
+    enabled: true
+    default_model: "deepseek-chat"
+    api_key_env: "DEEPSEEK_API_KEY"
+  gigachat:
+    name: gigachat
+    enabled: false  # включить после получения credentials
+    default_model: "GigaChat"
+    api_key_env: "GIGACHAT_CREDENTIALS"
+    extra:
+      scope: "GIGACHAT_API_PERS"
+  yandexgpt:
+    name: yandexgpt
+    enabled: false  # включить после настройки Yandex Cloud
+    default_model: "yandexgpt-lite"
+    api_key_env: "YANDEX_API_KEY"
+    extra:
+      folder_id_env: "YANDEX_FOLDER_ID"
+
+tasks:
+  legal_reasoning:
+    primary: claude
+    temperature: 0.0
+    max_tokens: 4096
+    fallback:
+      chain: [deepseek, gigachat]
+      policy: retry_then_alert
+      max_retries: 3
+      retry_delay: 1.0
+  reranking:
+    primary: claude
+    temperature: 0.0
+    max_tokens: 1024
+    fallback:
+      chain: []
+      policy: retry_then_alert
+      max_retries: 3
+  classification:
+    primary: gemini
+    temperature: 0.0
+    max_tokens: 512
+    fallback:
+      chain: [gigachat, yandexgpt]
+      policy: auto_fallback
+  extraction:
+    primary: gemini
+    temperature: 0.0
+    max_tokens: 2048
+    fallback:
+      chain: [deepseek, claude]
+      policy: auto_fallback
+  embedding:
+    primary: openai
+    primary_model: "text-embedding-3-small"
+    fallback:
+      chain: []
+      policy: retry_then_alert
+      max_retries: 3
+  simple_response:
+    primary: gigachat
+    temperature: 0.3
+    max_tokens: 1024
+    fallback:
+      chain: [yandexgpt, gemini]
+      policy: auto_fallback
+  vision_ocr:
+    primary: gemini
+    temperature: 0.0
+    max_tokens: 4096
+    fallback:
+      chain: [claude]
+      policy: auto_fallback
+  document_generation:
+    primary: claude
+    temperature: 0.0
+    max_tokens: 8192
+    fallback:
+      chain: []
+      policy: retry_then_alert
+      max_retries: 3
+
+health:
+  window_minutes: 10
+  error_threshold: 0.3
+  min_calls_for_decision: 5
+  check_interval_seconds: 60
+
+default_task: simple_response

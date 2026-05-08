@@ -1,0 +1,43 @@
+# LLM Pricing — USD per 1K tokens
+# Format: "provider/model": {input: X, output: Y}
+# Updated: 2026-04
+
+pricing:
+  # Anthropic
+  "claude/claude-sonnet-4-20250514":
+    input: 0.003
+    output: 0.015
+
+  # OpenAI
+  "openai/gpt-4o-mini":
+    input: 0.00015
+    output: 0.0006
+  "openai/text-embedding-3-small":
+    input: 0.00002
+    output: 0
+
+  # Google Gemini
+  "gemini/gemini-2.0-flash":
+    input: 0.0001
+    output: 0.0004
+
+  # DeepSeek
+  "deepseek/deepseek-chat":
+    input: 0.00014
+    output: 0.00028
+
+  # GigaChat (Sber)
+  "gigachat/GigaChat":
+    input: 0.00015
+    output: 0.00015
+  "gigachat/GigaChat-Pro":
+    input: 0.001
+    output: 0.001
+
+  # YandexGPT
+  "yandexgpt/yandexgpt-lite":
+    input: 0.0002
+    output: 0.0002
+  "yandexgpt/yandexgpt":
+    input: 0.0012
+    output: 0.0012

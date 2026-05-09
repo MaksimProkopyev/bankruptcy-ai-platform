@@ -18,6 +18,7 @@ from app.schemas.schemas import (
     LeadCreate, LeadResponse,
     ConsultantMessageRequest, ConsultantMessageResponse,
 )
+from app.core.permissions import require_permission
 
 router = APIRouter()
 
@@ -265,7 +266,8 @@ async def chat_with_consultant(
     return ConsultantMessageResponse(**result)
 
 
-@router.post("/tasks", response_model=AITaskResponse, status_code=201)
+@router.post("/tasks", response_model=AITaskResponse, status_code=201,
+             dependencies=[Depends(require_permission("ai_tasks", "write"))])
 async def create_ai_task(data: AITaskRequest, db: AsyncSession = Depends(get_db)):
     """Submit a task to the AI Core (OCR, document generation, etc.)."""
     task = AITask(
@@ -286,7 +288,8 @@ async def create_ai_task(data: AITaskRequest, db: AsyncSession = Depends(get_db)
     return task
 
 
-@router.get("/tasks/{task_id}", response_model=AITaskResponse)
+@router.get("/tasks/{task_id}", response_model=AITaskResponse,
+            dependencies=[Depends(require_permission("ai_tasks", "read"))])
 async def get_ai_task(task_id: UUID, db: AsyncSession = Depends(get_db)):
     """Check status and result of an AI task."""
     task = await db.get(AITask, task_id)
@@ -295,7 +298,8 @@ async def get_ai_task(task_id: UUID, db: AsyncSession = Depends(get_db)):
     return task
 
 
-@router.get("/tasks")
+@router.get("/tasks",
+            dependencies=[Depends(require_permission("ai_tasks", "read"))])
 async def list_tasks(
     status: str | None = None,
     agent_name: str | None = None,

@@ -13,11 +13,13 @@ from app.schemas.schemas import (
     CreditorCreate, CreditorResponse, DeadlineCreate, DeadlineResponse,
 )
 from app.services.case_machine import is_valid_transition, get_available_transitions
+from app.core.permissions import require_permission
 
 router = APIRouter()
 
 
-@router.get("/", response_model=list[CaseResponse])
+@router.get("/", response_model=list[CaseResponse],
+            dependencies=[Depends(require_permission("cases", "read"))])
 async def list_cases(
     status: str | None = None,
     assigned_lawyer_id: UUID | None = None,
@@ -38,7 +40,8 @@ async def list_cases(
     return result.scalars().all()
 
 
-@router.get("/stats")
+@router.get("/stats",
+            dependencies=[Depends(require_permission("cases", "read"))])
 async def get_case_stats(db: AsyncSession = Depends(get_db)):
     """Quick stats for dashboard."""
     total = await db.execute(select(func.count(Case.id)))
@@ -52,7 +55,8 @@ async def get_case_stats(db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.get("/{case_id}", response_model=CaseDetailResponse)
+@router.get("/{case_id}", response_model=CaseDetailResponse,
+            dependencies=[Depends(require_permission("cases", "read"))])
 async def get_case(case_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get case with all related data."""
     query = (
@@ -73,7 +77,8 @@ async def get_case(case_id: UUID, db: AsyncSession = Depends(get_db)):
     return case
 
 
-@router.get("/{case_id}/transitions")
+@router.get("/{case_id}/transitions",
+            dependencies=[Depends(require_permission("cases", "read"))])
 async def get_transitions(case_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get available status transitions for a case."""
     case = await db.get(Case, case_id)
@@ -87,7 +92,8 @@ async def get_transitions(case_id: UUID, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.post("/", response_model=CaseResponse, status_code=201)
+@router.post("/", response_model=CaseResponse, status_code=201,
+             dependencies=[Depends(require_permission("cases", "write"))])
 async def create_case(data: CaseCreate, db: AsyncSession = Depends(get_db)):
     """Create a new case."""
     client = await db.get(Client, data.client_id)
@@ -113,7 +119,8 @@ async def create_case(data: CaseCreate, db: AsyncSession = Depends(get_db)):
     return case
 
 
-@router.patch("/{case_id}", response_model=CaseResponse)
+@router.patch("/{case_id}", response_model=CaseResponse,
+              dependencies=[Depends(require_permission("cases", "write"))])
 async def update_case(
     case_id: UUID, data: CaseUpdate, db: AsyncSession = Depends(get_db)
 ):
@@ -163,7 +170,8 @@ async def update_case(
     return case
 
 
-@router.get("/{case_id}/timeline")
+@router.get("/{case_id}/timeline",
+            dependencies=[Depends(require_permission("cases", "read"))])
 async def get_case_timeline(
     case_id: UUID,
     page: int = Query(1, ge=1),
@@ -182,7 +190,8 @@ async def get_case_timeline(
     return result.scalars().all()
 
 
-@router.post("/{case_id}/creditors", response_model=CreditorResponse, status_code=201)
+@router.post("/{case_id}/creditors", response_model=CreditorResponse, status_code=201,
+             dependencies=[Depends(require_permission("cases", "write"))])
 async def add_creditor(
     case_id: UUID, data: CreditorCreate, db: AsyncSession = Depends(get_db)
 ):
@@ -216,7 +225,8 @@ async def add_creditor(
     return creditor
 
 
-@router.post("/{case_id}/deadlines", response_model=DeadlineResponse, status_code=201)
+@router.post("/{case_id}/deadlines", response_model=DeadlineResponse, status_code=201,
+             dependencies=[Depends(require_permission("cases", "write"))])
 async def add_deadline(
     case_id: UUID, data: DeadlineCreate, db: AsyncSession = Depends(get_db)
 ):
@@ -232,7 +242,8 @@ async def add_deadline(
     return deadline
 
 
-@router.get("/{case_id}/checklist")
+@router.get("/{case_id}/checklist",
+            dependencies=[Depends(require_permission("cases", "read"))])
 async def get_checklist(case_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get document checklist for a case with completeness progress."""
     from app.services.document_checklist import get_required_documents, calculate_completeness

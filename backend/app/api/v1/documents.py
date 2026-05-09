@@ -11,13 +11,15 @@ from app.models.models import Document, DocumentStatus, DocumentType, Case, Case
 from app.schemas.schemas import DocumentResponse
 from app.services.file_storage import get_storage
 from app.core.config import settings
+from app.core.permissions import require_permission
 
 router = APIRouter()
 
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 
 
-@router.post("/upload/{case_id}", response_model=DocumentResponse, status_code=201)
+@router.post("/upload/{case_id}", response_model=DocumentResponse, status_code=201,
+             dependencies=[Depends(require_permission("documents", "write"))])
 async def upload_document(
     case_id: UUID,
     document_type: str = Form(...),
@@ -95,7 +97,8 @@ async def upload_document(
     return document
 
 
-@router.get("/{document_id}", response_model=DocumentResponse)
+@router.get("/{document_id}", response_model=DocumentResponse,
+            dependencies=[Depends(require_permission("documents", "read"))])
 async def get_document(document_id: UUID, db: AsyncSession = Depends(get_db)):
     doc = await db.get(Document, document_id)
     if not doc:
@@ -103,7 +106,8 @@ async def get_document(document_id: UUID, db: AsyncSession = Depends(get_db)):
     return doc
 
 
-@router.get("/{document_id}/download")
+@router.get("/{document_id}/download",
+            dependencies=[Depends(require_permission("documents", "read"))])
 async def download_document(document_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get presigned URL for download."""
     doc = await db.get(Document, document_id)
@@ -114,7 +118,8 @@ async def download_document(document_id: UUID, db: AsyncSession = Depends(get_db
     return {"download_url": url, "file_name": doc.file_name}
 
 
-@router.get("/{document_id}/extracted-data")
+@router.get("/{document_id}/extracted-data",
+            dependencies=[Depends(require_permission("documents", "read"))])
 async def get_extracted_data(document_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get AI-extracted structured data."""
     doc = await db.get(Document, document_id)
@@ -128,7 +133,8 @@ async def get_extracted_data(document_id: UUID, db: AsyncSession = Depends(get_d
     }
 
 
-@router.get("/case/{case_id}", response_model=list[DocumentResponse])
+@router.get("/case/{case_id}", response_model=list[DocumentResponse],
+            dependencies=[Depends(require_permission("documents", "read"))])
 async def list_case_documents(case_id: UUID, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Document).where(Document.case_id == case_id).order_by(Document.created_at.desc())
@@ -136,7 +142,8 @@ async def list_case_documents(case_id: UUID, db: AsyncSession = Depends(get_db))
     return result.scalars().all()
 
 
-@router.post("/{document_id}/validate")
+@router.post("/{document_id}/validate",
+             dependencies=[Depends(require_permission("documents", "write"))])
 async def validate_document(
     document_id: UUID,
     approved: bool,

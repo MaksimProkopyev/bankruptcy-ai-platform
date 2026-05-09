@@ -8,7 +8,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -56,6 +56,17 @@ async def get_current_user(
     user = await db.get(User, UUID(user_id))
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")
+
+    # Set session-local vars for PostgreSQL RLS policies
+    await db.execute(
+        text("SELECT set_config('app.current_user_id', :uid, true)"),
+        {"uid": str(user.id)}
+    )
+    await db.execute(
+        text("SELECT set_config('app.current_user_role', :role, true)"),
+        {"role": user.role}
+    )
+
     return user
 
 

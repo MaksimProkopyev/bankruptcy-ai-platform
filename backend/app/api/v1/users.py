@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models.models import User, Case
 from app.schemas.schemas import UserResponse
-from app.core.security import get_current_user, require_admin
+from app.core.permissions import require_permission
 
 router = APIRouter()
 
@@ -19,7 +19,7 @@ async def list_users(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _user: User = Depends(require_admin),
+    _user: User = Depends(require_permission("users", "read")),
 ):
     """List all staff users (admin only)."""
     query = select(User).order_by(User.created_at.desc())
@@ -33,7 +33,7 @@ async def list_users(
 @router.get("/lawyers")
 async def list_lawyers_with_load(
     db: AsyncSession = Depends(get_db),
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(require_permission("users", "read")),
 ):
     """List lawyers with their case counts (for assignment UI)."""
     query = (
@@ -69,7 +69,7 @@ async def update_user(
     is_active: bool | None = None,
     max_cases: int | None = None,
     db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    _admin: User = Depends(require_permission("users", "write")),
 ):
     """Update user (admin only)."""
     user = await db.get(User, user_id)

@@ -6,11 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.models import Case, Payment
+from app.core.permissions import require_permission
 
 router = APIRouter()
 
 
-@router.get("/funnel")
+@router.get("/funnel",
+            dependencies=[Depends(require_permission("analytics", "read"))])
 async def get_funnel(db: AsyncSession = Depends(get_db)):
     """Conversion funnel: leads → qualified → contracts → filed → completed."""
     result = await db.execute(text("SELECT * FROM v_funnel LIMIT 12"))
@@ -18,7 +20,8 @@ async def get_funnel(db: AsyncSession = Depends(get_db)):
     return [dict(r) for r in rows]
 
 
-@router.get("/lawyer-workload")
+@router.get("/lawyer-workload",
+            dependencies=[Depends(require_permission("analytics", "read"))])
 async def get_lawyer_workload(db: AsyncSession = Depends(get_db)):
     """Cases per lawyer breakdown."""
     result = await db.execute(text("SELECT * FROM v_lawyer_workload"))
@@ -26,7 +29,8 @@ async def get_lawyer_workload(db: AsyncSession = Depends(get_db)):
     return [dict(r) for r in rows]
 
 
-@router.get("/unit-economics")
+@router.get("/unit-economics",
+            dependencies=[Depends(require_permission("analytics", "read"))])
 async def get_unit_economics(db: AsyncSession = Depends(get_db)):
     """Per-case economics: fee, cost, margin, duration."""
     result = await db.execute(text("SELECT * FROM v_case_economics LIMIT 100"))
@@ -34,7 +38,8 @@ async def get_unit_economics(db: AsyncSession = Depends(get_db)):
     return [dict(r) for r in rows]
 
 
-@router.get("/summary")
+@router.get("/summary",
+            dependencies=[Depends(require_permission("analytics", "read"))])
 async def get_dashboard_summary(db: AsyncSession = Depends(get_db)):
     """High-level dashboard numbers."""
     total = await db.execute(select(func.count(Case.id)))

@@ -24,6 +24,7 @@ from app.models.billing_models import (
 from app.services.document_service import DocumentService, SEED_TEMPLATES
 from app.services.esign_service import ESignService
 from app.services.tochka_service import TochkaService
+from app.core.permissions import require_permission
 
 router = APIRouter()
 
@@ -59,7 +60,8 @@ class GenerateActRequest(BaseModel):
 
 # ─── Templates ───────────────────────────────────────────────
 
-@router.get("/templates")
+@router.get("/templates",
+            dependencies=[Depends(require_permission("payments", "read"))])
 async def list_templates(category: str | None = None, db: AsyncSession = Depends(get_db)):
     """List available document templates."""
     svc = DocumentService(db)
@@ -78,7 +80,8 @@ async def list_templates(category: str | None = None, db: AsyncSession = Depends
     ]
 
 
-@router.post("/templates/seed")
+@router.post("/templates/seed",
+             dependencies=[Depends(require_permission("payments", "write"))])
 async def seed_templates(db: AsyncSession = Depends(get_db)):
     """Seed default document templates."""
     created = 0
@@ -106,7 +109,8 @@ async def seed_templates(db: AsyncSession = Depends(get_db)):
 
 # ─── Drafts ──────────────────────────────────────────────────
 
-@router.post("/drafts/generate")
+@router.post("/drafts/generate",
+             dependencies=[Depends(require_permission("payments", "write"))])
 async def generate_draft(data: GenerateDraftRequest, db: AsyncSession = Depends(get_db)):
     """Generate a document draft from template + case data."""
     svc = DocumentService(db)
@@ -129,7 +133,8 @@ async def generate_draft(data: GenerateDraftRequest, db: AsyncSession = Depends(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/drafts/{draft_id}")
+@router.get("/drafts/{draft_id}",
+            dependencies=[Depends(require_permission("payments", "read"))])
 async def get_draft(draft_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get full draft content."""
     draft = await db.get(DocumentDraft, draft_id)
@@ -149,7 +154,8 @@ async def get_draft(draft_id: UUID, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.get("/drafts/case/{case_id}")
+@router.get("/drafts/case/{case_id}",
+            dependencies=[Depends(require_permission("payments", "read"))])
 async def list_case_drafts(case_id: UUID, db: AsyncSession = Depends(get_db)):
     """List all drafts for a case."""
     result = await db.execute(
@@ -170,7 +176,8 @@ async def list_case_drafts(case_id: UUID, db: AsyncSession = Depends(get_db)):
     ]
 
 
-@router.post("/drafts/{draft_id}/approve")
+@router.post("/drafts/{draft_id}/approve",
+             dependencies=[Depends(require_permission("payments", "write"))])
 async def approve_draft(draft_id: UUID, data: ApproveDraftRequest, db: AsyncSession = Depends(get_db)):
     """Lawyer approves a document draft."""
     svc = DocumentService(db)
@@ -182,7 +189,8 @@ async def approve_draft(draft_id: UUID, data: ApproveDraftRequest, db: AsyncSess
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/drafts/{draft_id}/send-for-signing")
+@router.post("/drafts/{draft_id}/send-for-signing",
+             dependencies=[Depends(require_permission("payments", "write"))])
 async def send_for_signing(draft_id: UUID, db: AsyncSession = Depends(get_db)):
     """Send approved draft to client for signing."""
     svc = DocumentService(db)
@@ -196,7 +204,8 @@ async def send_for_signing(draft_id: UUID, db: AsyncSession = Depends(get_db)):
 
 # ─── E-Signatures ────────────────────────────────────────────
 
-@router.post("/sign/initiate")
+@router.post("/sign/initiate",
+             dependencies=[Depends(require_permission("payments", "write"))])
 async def initiate_signing(data: InitiateSigningRequest, db: AsyncSession = Depends(get_db)):
     """Send SMS code for document signing."""
     svc = ESignService(db)
@@ -235,7 +244,8 @@ async def verify_signature(data: VerifySignatureRequest, request: Request, db: A
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/sign/audit/{case_id}")
+@router.get("/sign/audit/{case_id}",
+            dependencies=[Depends(require_permission("payments", "read"))])
 async def get_signature_audit(case_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get signature audit trail for a case."""
     svc = ESignService(db)
@@ -245,7 +255,8 @@ async def get_signature_audit(case_id: UUID, db: AsyncSession = Depends(get_db))
 
 # ─── Invoices ────────────────────────────────────────────────
 
-@router.post("/invoices")
+@router.post("/invoices",
+             dependencies=[Depends(require_permission("payments", "write"))])
 async def create_invoice(data: CreateInvoiceRequest, db: AsyncSession = Depends(get_db)):
     """Create invoice (and optionally push to Tochka bank)."""
     svc = TochkaService(db)
@@ -264,7 +275,8 @@ async def create_invoice(data: CreateInvoiceRequest, db: AsyncSession = Depends(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/invoices/{invoice_id}/send")
+@router.post("/invoices/{invoice_id}/send",
+             dependencies=[Depends(require_permission("payments", "write"))])
 async def send_invoice(invoice_id: UUID, via: str = "lk", db: AsyncSession = Depends(get_db)):
     """Send invoice to client."""
     svc = TochkaService(db)
@@ -276,7 +288,8 @@ async def send_invoice(invoice_id: UUID, via: str = "lk", db: AsyncSession = Dep
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/invoices/case/{case_id}")
+@router.get("/invoices/case/{case_id}",
+            dependencies=[Depends(require_permission("payments", "read"))])
 async def list_case_invoices(case_id: UUID, db: AsyncSession = Depends(get_db)):
     """List invoices for a case."""
     result = await db.execute(
@@ -298,7 +311,8 @@ async def list_case_invoices(case_id: UUID, db: AsyncSession = Depends(get_db)):
 
 # ─── Acts ────────────────────────────────────────────────────
 
-@router.post("/acts")
+@router.post("/acts",
+             dependencies=[Depends(require_permission("payments", "write"))])
 async def create_act(data: GenerateActRequest, db: AsyncSession = Depends(get_db)):
     """Generate act of completed work."""
     svc = TochkaService(db)
@@ -344,7 +358,8 @@ async def tochka_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/reconcile")
+@router.post("/reconcile",
+             dependencies=[Depends(require_permission("payments", "write"))])
 async def run_reconciliation(db: AsyncSession = Depends(get_db)):
     """Run payment reconciliation — match unmatched webhooks to invoices."""
     svc = TochkaService(db)

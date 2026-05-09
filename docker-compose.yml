@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./backend/app/db/migrations:/docker-entrypoint-initdb.d
@@ -20,8 +20,9 @@ services:
   # Redis (cache + task queue)
   redis:
     image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD}
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -35,8 +36,8 @@ services:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio123
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - miniodata:/data
 
@@ -44,7 +45,7 @@ services:
   ollama:
     image: ollama/ollama:latest
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     profiles:
@@ -59,7 +60,7 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/bankruptcy_ai
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:8024286e2b373c4df9ea95d33c9d737bbde6d3bc@redis:6379/0
       S3_ENDPOINT: http://minio:9000
     depends_on:
       postgres:
@@ -79,7 +80,7 @@ services:
       - "8001:8001"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/bankruptcy_ai
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:8024286e2b373c4df9ea95d33c9d737bbde6d3bc@redis:6379/0
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GIGACHAT_API_KEY: ${GIGACHAT_API_KEY}
@@ -117,7 +118,7 @@ services:
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/bankruptcy_ai
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:8024286e2b373c4df9ea95d33c9d737bbde6d3bc@redis:6379/0
       AI_CORE_URL: http://ai-core:8001
     depends_on:
       postgres:
@@ -137,7 +138,7 @@ services:
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/bankruptcy_ai
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:8024286e2b373c4df9ea95d33c9d737bbde6d3bc@redis:6379/0
       LEAD_COLLECTOR_MOCK_MODE: ${LEAD_COLLECTOR_MOCK_MODE:-true}
       FSSP_API_URL: ${FSSP_API_URL:-}
       FSSP_API_KEY: ${FSSP_API_KEY:-}
@@ -164,7 +165,7 @@ services:
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/bankruptcy_ai
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:8024286e2b373c4df9ea95d33c9d737bbde6d3bc@redis:6379/0
       LEAD_OUTREACH_DRY_RUN: ${LEAD_OUTREACH_DRY_RUN:-true}
       LEAD_OUTREACH_SMS_API_URL: ${LEAD_OUTREACH_SMS_API_URL:-}
       LEAD_OUTREACH_SMS_API_KEY: ${LEAD_OUTREACH_SMS_API_KEY:-}

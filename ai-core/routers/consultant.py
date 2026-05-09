@@ -8,13 +8,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai_core.agents.consultant import (
+from agents.consultant import (
     ConsultantAgent,
     ConsultantRequest,
     ConsultantResponse,
     get_consultant_agent,
 )
-from ai_core.db.session import get_db  # Assuming there's a db session dependency
+from database import get_db  # Assuming there's a db session dependency
 
 logger = logging.getLogger(__name__)
 

@@ -17,7 +17,7 @@ import redis.asyncio as redis
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from database import engine, async_session, get_db
 
 # RAG v2 imports
 from rag.config import RAGConfig
@@ -41,7 +41,7 @@ from rag.retrieval.hybrid import HybridRetriever
 from rag.retrieval.reranker import ClaudeReranker
 from rag.generation.context_builder import ContextBuilder
 from rag.generation.generator import RAGGenerator
-from ai_core.routers.consultant import router as consultant_router
+from routers.consultant import router as consultant_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -54,13 +54,7 @@ DATABASE_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql+asyncpg://postgres:postgres@postgres:5432/bankruptcy"
 )
-engine = create_async_engine(DATABASE_URL, echo=False)
-async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-async def get_db():
-    """Dependency for async DB session."""
-    async with async_session() as session:
-        yield session
 
 # ---- Redis client (lazy initialization) ----
 _redis_client = None

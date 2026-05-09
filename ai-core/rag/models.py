@@ -27,7 +27,7 @@ class SearchResult(BaseModel):
     chunk_text: str
     chunk_index: int
     score: float
-    metadata: Dict[str, Any] = {}
+    meta: Dict[str, Any] = {}
     highlight: Optional[str] = None
 
 
@@ -133,7 +133,7 @@ class RetrievedChunk(BaseModel):
     vector_score: float
     fts_score: float
     hybrid_score: float
-    metadata: Dict[str, Any]
+    meta: Dict[str, Any]
 
 
 # ---- SQLAlchemy ORM Models ----
@@ -158,7 +158,7 @@ class KnowledgeSource(Base):
     external_url = Column(Text)
     file_path = Column(Text)
     tags = Column(ARRAY(String), default=[])
-    metadata = Column(JSONB, default={})
+    meta = Column('metadata', JSONB, default={})
     auto_ingest = Column(Boolean, default=True)
     ingestion_status = Column(String(20), default="pending")
     chunks_count = Column(Integer, default=0)
@@ -179,7 +179,7 @@ class KnowledgeChunk(Base):
     token_count = Column(Integer)
     embedding = Column(Vector(1536))
     fts_index = Column(Text)  # tsvector stored as text, updated via trigger
-    metadata = Column(JSONB, default={})
+    meta = Column('metadata', JSONB, default={})
     feedback_count = Column(Integer, default=0)
     avg_relevance_score = Column(Float, default=0.0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

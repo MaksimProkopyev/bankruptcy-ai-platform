@@ -8,7 +8,7 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from uuid import uuid4
 
-from ai_core.agents.consultant import (
+from agents.consultant import (
     ConsultantAgent,
     ConsultantRequest,
     ConsultantResponse,

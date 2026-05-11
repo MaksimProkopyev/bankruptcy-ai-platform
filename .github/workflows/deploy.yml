@@ -1,0 +1,22 @@
+name: Deploy to VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 89.169.169.103
+          username: ivmsu
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/bankruptcy-ai
+            git pull origin main
+            docker compose up -d --build --remove-orphans
+            docker compose ps

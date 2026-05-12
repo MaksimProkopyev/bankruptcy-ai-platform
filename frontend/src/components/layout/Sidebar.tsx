@@ -5,15 +5,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 
 const NAV_ITEMS = [
-  { href: "/crm", label: "Дашборд", icon: "📊" },
-  { href: "/crm/cases", label: "Дела", icon: "📁" },
-  { href: "/crm/prospects", label: "Лидогенерация", icon: "🔍" },
-  { href: "/crm/clients", label: "Клиенты", icon: "👤" },
-  { href: "/crm/deadlines", label: "Сроки", icon: "⏰" },
-  { href: "/crm/documents", label: "Документы", icon: "📄" },
-  { href: "/crm/analytics", label: "Аналитика", icon: "📈" },
-  { href: "/crm/billing", label: "Документы/Счета", icon: "📝" },
-  { href: "/crm/settings", label: "Настройки", icon: "⚙️" },
+  { href: "/crm", label: "Дашборд", icon: "📊", staffOnly: false },
+  { href: "/crm/cases", label: "Дела", icon: "📁", staffOnly: false },
+  { href: "/crm/prospects", label: "Лидогенерация", icon: "🔍", staffOnly: false },
+  { href: "/crm/clients", label: "Клиенты", icon: "👤", staffOnly: false },
+  { href: "/crm/deadlines", label: "Сроки", icon: "⏰", staffOnly: false },
+  { href: "/crm/documents", label: "Документы", icon: "📄", staffOnly: false },
+  { href: "/crm/analytics", label: "Аналитика", icon: "📈", staffOnly: false },
+  { href: "/crm/billing", label: "Документы/Счета", icon: "📝", staffOnly: false },
+  { href: "/crm/settings", label: "Настройки", icon: "⚙️", staffOnly: false },
 ];
 
 function getCookie(name: string): string {
@@ -22,11 +22,24 @@ function getCookie(name: string): string {
   return match ? decodeURIComponent(match[2]) : "";
 }
 
+function getUserRoleFromToken(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) return "";
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.role || "";
+  } catch {
+    return "";
+  }
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const userName = getCookie("staff_name") || "Пользователь";
   const userEmail = getCookie("staff_email") || "";
+  const userRole = getUserRoleFromToken();
 
   function handleLogout() {
     document.cookie = "staff_token=; path=/; max-age=0";
@@ -45,7 +58,10 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => {
+          if (item.staffOnly && userRole === "client") return false;
+          return true;
+        }).map((item) => {
           const isActive = item.href === "/crm"
             ? pathname === "/crm"
             : pathname.startsWith(item.href);

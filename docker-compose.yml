@@ -111,6 +111,19 @@ services:
       - /app/node_modules
     command: npm run dev
 
+  # Staff Portal (Next.js, port 3001)
+  staff-frontend:
+    build:
+      context: ./staff-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8000/api/v1
+    depends_on:
+      - backend
+    restart: unless-stopped
+
   # AI Task Worker (processes OCR, document gen)
   worker:
     build:

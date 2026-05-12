@@ -376,3 +376,62 @@ class ConsultantMessageResponse(BaseModel):
     conversation_id: str
     cta: Optional[dict] = None
     disclaimer: str
+
+
+# ---- Staff / Tasks ----
+
+class TaskResponse(BaseModel):
+    id: UUID
+    title: str
+    description: Optional[str]
+    status: str
+    priority: str
+    due_date: Optional[datetime]
+    case_id: Optional[UUID]
+    case_number: Optional[str]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class TaskStatusUpdate(BaseModel):
+    status: str
+
+
+# ---- Staff / Suggestions ----
+
+class SuggestionCreate(BaseModel):
+    title: str
+    body: str
+
+
+class SuggestionUpdate(BaseModel):
+    status: Optional[str] = None
+    admin_note: Optional[str] = None
+
+
+class SuggestionResponse(BaseModel):
+    id: UUID
+    title: str
+    body: str
+    status: str
+    admin_note: Optional[str]
+    author_id: UUID
+    author_name: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---- Staff / Dashboard ----
+
+class StaffDashboardResponse(BaseModel):
+    user: dict
+    my_cases_count: int
+    my_tasks_count: int
+    my_deadlines_today: int
+    my_deadlines_overdue: int
+    team_cases_active: Optional[int] = None
+    team_tasks_open: Optional[int] = None
+    team_overdue_deadlines: Optional[int] = None
+

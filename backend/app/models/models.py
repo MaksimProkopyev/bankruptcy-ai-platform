@@ -27,6 +27,7 @@ class UserRole(str, enum.Enum):
     client_manager = "client_manager"
     marketer = "marketer"
     ai_engineer = "ai_engineer"
+    client = "client"
 
 
 class CaseStatus(str, enum.Enum):
@@ -356,3 +357,36 @@ class Message(Base):
     sent_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     read_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    case_id = Column(UUID(as_uuid=True), ForeignKey("cases.id", ondelete="SET NULL"))
+    assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    title = Column(Text, nullable=False)
+    description = Column(Text)
+    status = Column(String(20), nullable=False, default="new")
+    priority = Column(String(20), nullable=False, default="medium")
+    due_date = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    assignee = relationship("User", foreign_keys=[assigned_to])
+    case = relationship("Case", foreign_keys=[case_id])
+
+
+class Suggestion(Base):
+    __tablename__ = "suggestions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(Text, nullable=False)
+    body = Column(Text, nullable=False)
+    status = Column(String(20), nullable=False, default="new")
+    admin_note = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    author = relationship("User", foreign_keys=[author_id])

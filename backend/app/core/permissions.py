@@ -92,6 +92,15 @@ PERMISSIONS: Dict[str, Dict[str, Set[UserRole]]] = {
         "write":  {UserRole.admin, UserRole.ai_engineer},
         "delete": {UserRole.admin},
     },
+    "staff": {
+        "read":   {UserRole.admin, UserRole.operations_director, UserRole.lawyer,
+                   UserRole.paralegal, UserRole.client_manager, UserRole.marketer,
+                   UserRole.ai_engineer},
+        "write":  {UserRole.admin, UserRole.operations_director, UserRole.lawyer,
+                   UserRole.paralegal, UserRole.client_manager, UserRole.marketer,
+                   UserRole.ai_engineer},
+        "delete": {UserRole.admin, UserRole.operations_director},
+    },
 }
 
 

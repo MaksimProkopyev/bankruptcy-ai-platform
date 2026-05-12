@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     auth, users, clients, cases, documents, ai, analytics,
     notifications, client_auth, client_cabinet, anticollector, billing, lead_sources, prospects,
+    staff,
 )
 
 api_router = APIRouter()
@@ -20,6 +21,9 @@ api_router.include_router(notifications.router, prefix="/notifications", tags=["
 api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(lead_sources.router, prefix="/lead-sources", tags=["lead-sources"])
 api_router.include_router(prospects.router, prefix="/prospects", tags=["prospects"])
+
+# Staff personal cabinet
+api_router.include_router(staff.router, prefix="/staff", tags=["staff"])
 
 # Client personal cabinet
 api_router.include_router(client_auth.router, prefix="/client-auth", tags=["client-auth"])

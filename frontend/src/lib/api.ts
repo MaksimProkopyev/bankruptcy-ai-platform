@@ -270,3 +270,49 @@ export interface LawyerWorkload {
   active_court_cases: number;
   completed_cases: number;
 }
+
+// Staff API helpers (used by (staff) pages)
+import { getCookie } from "./auth";
+
+function getStaffHeaders(): Record<string, string> {
+  const token = getCookie("staff_token");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+async function handleStaffResponse(res: Response) {
+  if (res.status === 401) {
+    if (typeof window !== "undefined") window.location.href = "/login";
+    return null;
+  }
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+const STAFF_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+export async function apiGet(path: string) {
+  const res = await fetch(`${STAFF_BASE_URL}${path}`, { headers: getStaffHeaders() });
+  return handleStaffResponse(res);
+}
+
+export async function apiPost(path: string, body: unknown) {
+  const res = await fetch(`${STAFF_BASE_URL}${path}`, {
+    method: "POST",
+    headers: getStaffHeaders(),
+    body: JSON.stringify(body),
+  });
+  return handleStaffResponse(res);
+}
+
+export async function apiPatch(path: string, body: unknown) {
+  const res = await fetch(`${STAFF_BASE_URL}${path}`, {
+    method: "PATCH",
+    headers: getStaffHeaders(),
+    body: JSON.stringify(body),
+  });
+  return handleStaffResponse(res);
+}

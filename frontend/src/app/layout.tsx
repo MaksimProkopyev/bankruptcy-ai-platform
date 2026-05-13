@@ -15,12 +15,16 @@ export const metadata: Metadata = {
     siteName: "Банкротство.AI",
   },
   robots: { index: true, follow: true },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').then(function(r){console.log('SW:',r.scope)}).catch(function(e){console.log('SW err:',e)})})}` }} />
+      </body>
     </html>
   );
 }

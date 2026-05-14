@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* ── Основные ── */
+  --color-primary: #1B3A5C;
+  --color-primary-dark: #0F2640;
+  --color-primary-light: #D4E4F7;
+  --color-surface: #E8EDF3;
+  --color-surface-muted: #F0F0F0;
+  --color-neutral: #E8E8E8;
+
+  /* ── Акцент (gold) ── */
+  --color-accent: #C9A84C;
+  --color-accent-hover: #B8953F;
+  --color-accent-light: #F5ECD4;
+
+  /* ── Текст ── */
+  --color-text: #000000;
+  --color-text-body: #333333;
+  --color-text-muted: #666666;
+  --color-text-on-dark: #FFFFFF;
+  --color-text-on-dark-muted: #D4E4F7;
+
+  /* ── Границы ── */
+  --color-border: #CCCCCC;
+  --color-border-strong: #999999;
+  --color-border-dark: #333333;
+
+  /* ── Семантические ── */
+  --color-success: #1D9E75;
+  --color-warning: #BA7517;
+  --color-danger: #E24B4A;
+  --color-info: #378ADD;
+
+  /* ── Типографика ── */
+  --font-heading: Georgia, 'PT Serif', 'Times New Roman', serif;
+  --font-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  /* ── Размеры текста ── */
+  --text-h1: 48px;
+  --text-h2: 32px;
+  --text-h3: 22px;
+  --text-body: 16px;
+  --text-small: 14px;
+  --text-caption: 12px;
+
+  /* ── Радиусы ── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* ── Тени ── */
+  --shadow-card: 0 4px 20px rgba(0,0,0,0.06);
+  --shadow-hover: 0 8px 32px rgba(27,58,92,0.10);
+}
+
+body {
+  color: var(--color-text-body);
+  background: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: var(--font-body);
+}
+
+main {
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0.92; }
+  to { opacity: 1; }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--color-text);
+}
+
+h1 { font-size: var(--text-h1); line-height: 1.2; }
+h2 { font-size: var(--text-h2); line-height: 1.3; }
+h3 { font-size: var(--text-h3); line-height: 1.4; }
+
+body, p, span, div, button, input, textarea, select {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+}
+
+small, .text-small { font-size: var(--text-small); }
+.caption, .text-caption { font-size: var(--text-caption); }

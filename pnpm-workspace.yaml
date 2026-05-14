@@ -1,0 +1,7 @@
+packages:
+  - 'packages/*'
+  - 'crm-frontend'
+  - 'lk-frontend'
+  - 'leadgen-frontend'
+  - 'site-frontend'
+  - 'staff-frontend'

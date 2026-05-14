@@ -95,10 +95,10 @@ services:
     volumes:
       - ./ai-core:/app
 
-  # Frontend (Next.js)
-  frontend:
+  # Site Frontend (Next.js, port 3000)
+  site-frontend:
     build:
-      context: ./frontend
+      context: ./site-frontend
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
@@ -107,9 +107,47 @@ services:
     depends_on:
       - backend
     volumes:
-      - ./frontend:/app
+      - ./site-frontend:/app
       - /app/node_modules
     command: npm run dev
+
+  # CRM Frontend (Next.js, port 3002)
+  crm-frontend:
+    build: ./crm-frontend
+    ports:
+      - "127.0.0.1:3002:3002"
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - JWT_SECRET=${JWT_SECRET}
+    restart: unless-stopped
+
+  # Client LK Frontend (Next.js, port 3003)
+  lk-frontend:
+    build: ./lk-frontend
+    ports:
+      - "127.0.0.1:3003:3003"
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - JWT_SECRET=${JWT_SECRET}
+    restart: unless-stopped
+
+  # Leadgen Frontend (Next.js, port 3004)
+  leadgen-frontend:
+    build: ./leadgen-frontend
+    ports:
+      - "127.0.0.1:3004:3004"
+    depends_on:
+      - backend
+      - leadgen
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXT_PUBLIC_LEADGEN_API_URL=http://leadgen:8002
+      - JWT_SECRET=${JWT_SECRET}
+    restart: unless-stopped
 
   # Staff Portal (Next.js, port 3001)
   staff-frontend:

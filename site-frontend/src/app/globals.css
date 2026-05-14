@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* ── Основные ── */
+  --color-primary: #1B3A5C;         /* навбар, заголовки, primary-кнопки, шапки таблиц */
+  --color-primary-dark: #0F2640;    /* hover primary, sidebar, footer фон */
+  --color-primary-light: #D4E4F7;  /* выделение строк, бэджи, подложки, focus-ring */
+  --color-surface: #E8EDF3;         /* alt-секции, карточки вторичные */
+  --color-surface-muted: #F0F0F0;  /* нейтральный фон, зебра в таблицах */
+  --color-neutral: #E8E8E8;         /* разделители, границы карточек */
+
+  /* ── Акцент (gold) ── */
+  --color-accent: #C9A84C;          /* CTA на тёмном фоне, активные табы, иконки-акценты */
+  --color-accent-hover: #B8953F;    /* hover gold */
+  --color-accent-light: #F5ECD4;    /* бэджи «Бесплатно», лёгкие выделения */
+
+  /* ── Текст ── */
+  --color-text: #000000;            /* заголовки */
+  --color-text-body: #333333;       /* основной текст */
+  --color-text-muted: #666666;      /* подписи, мета, placeholder */
+  --color-text-on-dark: #FFFFFF;    /* текст на primary/dark */
+  --color-text-on-dark-muted: #D4E4F7; /* вторичный текст на тёмном */
+
+  /* ── Границы ── */
+  --color-border: #CCCCCC;          /* тонкие разделители */
+  --color-border-strong: #999999;   /* таблицы, инпуты */
+  --color-border-dark: #333333;     /* линии на тёмном фоне */
+
+  /* ── Семантические ── */
+  --color-success: #1D9E75;         /* «списано», галочки, завершено */
+  --color-warning: #BA7517;         /* внимание, сроки, в процессе */
+  --color-danger: #E24B4A;          /* ошибки, просрочено, удаление */
+  --color-info: #378ADD;            /* информация, ссылки */
+
+  /* ── Типографика ── */
+  --font-heading: Georgia, 'PT Serif', 'Times New Roman', serif;
+  --font-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  /* ── Размеры текста ── */
+  --text-h1: 48px;    /* hero */
+  --text-h2: 32px;    /* секции */
+  --text-h3: 22px;    /* карточки */
+  --text-body: 16px;
+  --text-small: 14px;
+  --text-caption: 12px;
+
+  /* ── Радиусы ── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px; /* бэджи */
+
+  /* ── Тени ── */
+  --shadow-card: 0 4px 20px rgba(0,0,0,0.06);
+  --shadow-hover: 0 8px 32px rgba(27,58,92,0.10);
+}
+
+body {
+  color: var(--color-text-body);
+  background: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: var(--font-body);
+}
+
+/* Smooth page transitions */
+main {
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0.92; }
+  to { opacity: 1; }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
+}
+
+/* Remove default focus outline, add custom */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Focus for inputs */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--color-text);
+}
+
+h1 {
+  font-size: var(--text-h1);
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: var(--text-h2);
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: var(--text-h3);
+  line-height: 1.4;
+}
+
+body, p, span, div, button, input, textarea, select {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+}
+
+small, .text-small {
+  font-size: var(--text-small);
+}
+
+.caption, .text-caption {
+  font-size: var(--text-caption);
+}

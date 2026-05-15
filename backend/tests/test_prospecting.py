@@ -145,8 +145,8 @@ class TestProspectsAPI:
     """Тесты API-эндпоинтов."""
 
     @pytest.mark.asyncio
-    async def test_list_prospects_empty(self, client):
-        response = await client.get("/api/v1/prospects/")
+    async def test_list_prospects_empty(self, client, admin_headers):
+        response = await client.get("/api/v1/prospects/", headers=admin_headers)
         assert response.status_code == 200
         data = response.json()
         assert "items" in data
@@ -154,7 +154,7 @@ class TestProspectsAPI:
         assert data["total"] >= 0
 
     @pytest.mark.asyncio
-    async def test_inbound_prospect_created(self, client):
+    async def test_inbound_prospect_created(self, client, admin_headers):
         response = await client.post(
             "/api/v1/prospects/inbound",
             json={
@@ -173,9 +173,9 @@ class TestProspectsAPI:
         assert data["status"] == "new"
 
     @pytest.mark.asyncio
-    async def test_run_parser_mock(self, client):
+    async def test_run_parser_mock(self, client, admin_headers):
         # Предварительно нужно убедиться, что источник существует и включён
-        response = await client.post("/api/v1/prospects/run/fssp")
+        response = await client.post("/api/v1/prospects/run/fssp", headers=admin_headers)
         # Может вернуть 404 если источник не найден, или 200 если найден
         # В тестовой БД источник должен быть создан миграцией
         assert response.status_code in (200, 404)
@@ -186,7 +186,7 @@ class TestProspectsAPI:
             assert data["new"] >= 0
 
     @pytest.mark.asyncio
-    async def test_convert_prospect_to_lead(self, client):
+    async def test_convert_prospect_to_lead(self, client, admin_headers):
         # 1. Создать prospect
         create_resp = await client.post(
             "/api/v1/prospects/inbound",
@@ -200,7 +200,10 @@ class TestProspectsAPI:
         assert create_resp.status_code in (200, 201)
         prospect_id = create_resp.json()["id"]
         # 2. Конвертировать
-        convert_resp = await client.post(f"/api/v1/prospects/{prospect_id}/convert")
+        convert_resp = await client.post(
+            f"/api/v1/prospects/{prospect_id}/convert",
+            headers=admin_headers,
+        )
         # Может быть 400 если нет контакта, но у нас есть телефон
         assert convert_resp.status_code in (200, 400)
         if convert_resp.status_code == 200:
@@ -209,14 +212,16 @@ class TestProspectsAPI:
             assert data["converted_lead_id"] is not None
 
     @pytest.mark.asyncio
-    async def test_reject_prospect(self, client):
+    async def test_reject_prospect(self, client, admin_headers):
         create_resp = await client.post(
             "/api/v1/prospects/inbound",
             json={"source_type": "manual_entry", "full_name": "Отказов О.О.", "phone": "+79990000000"},
         )
         prospect_id = create_resp.json()["id"]
         reject_resp = await client.post(
-            f"/api/v1/prospects/{prospect_id}/reject", params={"reason": "Не подходит по сумме долга"}
+            f"/api/v1/prospects/{prospect_id}/reject",
+            params={"reason": "Не подходит по сумме долга"},
+            headers=admin_headers,
         )
         assert reject_resp.status_code == 200
         data = reject_resp.json()
@@ -224,7 +229,7 @@ class TestProspectsAPI:
         assert data["rejection_reason"] == "Не подходит по сумме долга"
 
     @pytest.mark.asyncio
-    async def test_bulk_convert(self, client):
+    async def test_bulk_convert(self, client, admin_headers):
         # Создать 3 prospect'а, конвертировать массово
         ids = []
         for i in range(3):
@@ -238,7 +243,11 @@ class TestProspectsAPI:
                 },
             )
             ids.append(resp.json()["id"])
-        bulk_resp = await client.post("/api/v1/prospects/bulk-convert", json={"prospect_ids": ids})
+        bulk_resp = await client.post(
+            "/api/v1/prospects/bulk-convert",
+            json={"prospect_ids": ids},
+            headers=admin_headers,
+        )
         assert bulk_resp.status_code == 200
         data = bulk_resp.json()
         assert data["converted"] >= 0
@@ -246,8 +255,8 @@ class TestProspectsAPI:
         assert isinstance(data["errors"], list)
 
     @pytest.mark.asyncio
-    async def test_stats(self, client):
-        response = await client.get("/api/v1/prospects/stats")
+    async def test_stats(self, client, admin_headers):
+        response = await client.get("/api/v1/prospects/stats", headers=admin_headers)
         assert response.status_code == 200
         data = response.json()
         assert "total" in data
@@ -256,8 +265,8 @@ class TestProspectsAPI:
         assert "conversion_rate" in data
 
     @pytest.mark.asyncio
-    async def test_sources_list(self, client):
-        response = await client.get("/api/v1/prospects/sources")
+    async def test_sources_list(self, client, admin_headers):
+        response = await client.get("/api/v1/prospects/sources", headers=admin_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) > 0
@@ -266,7 +275,7 @@ class TestProspectsAPI:
         assert "government" in categories
 
     @pytest.mark.asyncio
-    async def test_filter_by_temperature(self, client):
+    async def test_filter_by_temperature(self, client, admin_headers):
         # Создать hot prospect
         await client.post(
             "/api/v1/prospects/inbound",
@@ -279,18 +288,18 @@ class TestProspectsAPI:
                 "creditor_count": 5,
             },
         )
-        response = await client.get("/api/v1/prospects/?temperature=hot")
+        response = await client.get("/api/v1/prospects/?temperature=hot", headers=admin_headers)
         assert response.status_code == 200
         data = response.json()
         assert "items" in data
 
     @pytest.mark.asyncio
-    async def test_search_by_name(self, client):
+    async def test_search_by_name(self, client, admin_headers):
         await client.post(
             "/api/v1/prospects/inbound",
             json={"source_type": "manual_entry", "full_name": "Уникальнов Уникал Уникалович", "phone": "+79992222222"},
         )
-        response = await client.get("/api/v1/prospects/?search=Уникальнов")
+        response = await client.get("/api/v1/prospects/?search=Уникальнов", headers=admin_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["total"] >= 1

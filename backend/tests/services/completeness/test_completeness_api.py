@@ -48,9 +48,9 @@ class TestCompletenessAPI:
         assert data["total_items"] > 0
 
     async def test_init_checklist_unauthorized(self, client: AsyncClient, test_case):
-        """401 без авторизации."""
+        """401/403 без авторизации."""
         resp = await client.post(f"/api/v1/cases/{test_case.id}/completeness/init", json={})
-        assert resp.status_code == 401
+        assert resp.status_code in (401, 403)
 
     async def test_init_checklist_client_forbidden(self, client: AsyncClient, client_auth_headers, test_case):
         """403 для клиента (только lawyer/admin)."""

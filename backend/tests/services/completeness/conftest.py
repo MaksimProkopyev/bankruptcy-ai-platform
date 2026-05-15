@@ -5,8 +5,8 @@ from __future__ import annotations
 import uuid
 
 import pytest_asyncio
-from httpx import AsyncClient
 
+from app.core.security import create_access_token
 from app.models.case_checklist_item import CaseChecklistItem, ChecklistItemStatus
 from app.models.models import Case, Client, Document, User
 
@@ -174,15 +174,14 @@ async def test_checklist_items(db_session, test_case) -> list[CaseChecklistItem]
 
 
 @pytest_asyncio.fixture
-async def auth_headers(client: AsyncClient, test_lawyer):
-    """Auth headers для юриста."""
-    # TODO: реализовать получение JWT токена
-    # Временно возвращаем заглушку
-    return {"Authorization": f"Bearer test_token_{test_lawyer.id}"}
+async def auth_headers(test_lawyer) -> dict:
+    """Auth headers для юриста — генерирует реальный JWT токен."""
+    token = create_access_token(test_lawyer.id, test_lawyer.role)
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest_asyncio.fixture
-async def client_auth_headers(client: AsyncClient, test_client_user):
-    """Auth headers для клиента."""
-    # TODO: реализовать получение JWT токена для клиента
-    return {"Authorization": f"Bearer client_token_{test_client_user.id}"}
+async def client_auth_headers(test_client_user) -> dict:
+    """Auth headers для клиента — генерирует реальный JWT токен."""
+    token = create_access_token(test_client_user.id, test_client_user.role)
+    return {"Authorization": f"Bearer {token}"}

@@ -56,7 +56,13 @@ def migrated_test_db() -> AsyncGenerator[None, None]:
 
 
 async def _truncate_all_tables(engine) -> None:
-    """Clean database state between tests while keeping migrated schema."""
+    """Clean database state between tests while keeping migrated schema.
+
+    Excludes seed tables that are populated by migrations and should not be wiped.
+    """
+    # Tables populated by migration seeds that must be preserved across tests
+    seed_tables = {"prospect_sources_config"}
+
     async with engine.begin() as conn:
         result = await conn.execute(
             text(
@@ -68,7 +74,7 @@ async def _truncate_all_tables(engine) -> None:
                 """
             )
         )
-        table_names = [row[0] for row in result.fetchall()]
+        table_names = [row[0] for row in result.fetchall() if row[0] not in seed_tables]
         if table_names:
             joined = ", ".join(f'"{name}"' for name in table_names)
             await conn.execute(text(f"TRUNCATE TABLE {joined} RESTART IDENTITY CASCADE"))
@@ -96,3 +102,15 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def admin_headers(client: AsyncClient) -> dict:
+    """Seed the admin user and return valid JWT auth headers."""
+    await client.post("/api/v1/auth/seed-admin")
+    res = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@bankruptcy.ai", "password": "admin123"},
+    )
+    token = res.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}

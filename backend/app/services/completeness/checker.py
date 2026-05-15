@@ -71,9 +71,19 @@ class CompletenessChecker:
         # Определяем checklist_id
         if checklist_id is None:
             try:
+                # Map Case.procedure_type values to checklist procedure_type
+                procedure_map = {
+                    "asset_realization": "judicial",
+                    "restructuring": "judicial",
+                    "settlement": "judicial",
+                    "judicial": "judicial",
+                    "extrajudicial": "extrajudicial",
+                }
+                raw_procedure = str(case.procedure_type) if case.procedure_type else "judicial"
+                procedure_type_for_checklist = procedure_map.get(raw_procedure, "judicial")
                 checklist_id = self._matcher.resolve_checklist_id(
-                    client_scope=case.client_scope or "individual",
-                    procedure_type=case.procedure_type or "judicial",
+                    client_scope=getattr(case, "client_scope", None) or "individual",
+                    procedure_type=procedure_type_for_checklist,
                 )
             except ValueError as e:
                 logger.error("Cannot resolve checklist ID: %s", e)
@@ -117,7 +127,7 @@ class CompletenessChecker:
     async def get_progress(
         self,
         case_id: uuid.UUID,
-    ) -> CompletenessProgressResponse:
+    ) -> CompletenessProgressResponse | None:
         """Получить текущий прогресс комплектности.
 
         1. Загрузить все CaseChecklistItem для case_id
@@ -131,7 +141,7 @@ class CompletenessChecker:
         # Загружаем items из БД
         db_items = await self._get_all_items(case_id)
         if not db_items:
-            raise ValueError(f"No checklist items found for case {case_id}")
+            return None
 
         # Определяем checklist_id (берём из первого item)
         checklist_id = db_items[0].checklist_id
@@ -250,7 +260,7 @@ class CompletenessChecker:
         # Загружаем item
         db_item = await self._get_item(item_id)
         if not db_item or db_item.case_id != case_id:
-            raise ValueError(f"Item {item_id} not found for case {case_id}")
+            raise LookupError(f"Item {item_id} not found for case {case_id}")
 
         # Проверяем переход статуса
         if not self._validate_status_transition(db_item.status, update.status):

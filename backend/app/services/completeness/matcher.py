@@ -89,14 +89,20 @@ class DocumentMatcher:
         document_type: str,
         checklist_id: str,
     ) -> str | None:
-        """V1: exact match по document_type == checklist_item.id.
+        """V1: match по document_type == checklist_item.id или одному из aliases.
 
         Returns checklist_item_id or None.
         """
         checklist = self.get_checklist(checklist_id)
+        doc_type_lower = document_type.lower().strip()
         for item in checklist.items:
-            if item.id == document_type:
+            # Exact match on item id
+            if item.id == doc_type_lower:
                 return item.id
+            # Match on aliases (case-insensitive)
+            for alias in item.aliases:
+                if alias.lower().strip() == doc_type_lower:
+                    return item.id
         return None
 
     @staticmethod
@@ -152,6 +158,54 @@ class DocumentMatcher:
         # Сортировка по убыванию confidence
         results.sort(key=lambda x: x[1], reverse=True)
         return results
+
+    def match_document(
+        self,
+        document,  # SQLAlchemy Document object or Mock
+        checklist_id: str,
+    ) -> AutoMatchDetail | None:
+        """Match a single document to a checklist item.
+
+        Strategy (in order):
+        1. Exact match by document.document_type
+        2. Fuzzy match by document.file_name
+
+        Returns AutoMatchDetail or None if no match found.
+        """
+        # Validate checklist_id exists
+        self.get_checklist(checklist_id)
+
+        # Step 1: Exact match by document_type
+        if document.document_type:
+            doc_type = (
+                document.document_type.value
+                if hasattr(document.document_type, "value")
+                else str(document.document_type)
+            )
+            item_id = self.match_by_document_type(doc_type, checklist_id)
+            if item_id:
+                return AutoMatchDetail(
+                    checklist_item_id=item_id,
+                    document_id=getattr(document, "id", None),
+                    document_name=document.file_name or "unknown",
+                    matched_by=MatchMethod.AUTO_TYPE,
+                    confidence=1.0,
+                )
+
+        # Step 2: Fuzzy match by filename
+        if document.file_name:
+            fuzzy_matches = self.match_by_filename_fuzzy(document.file_name, checklist_id, threshold=0.7)
+            if fuzzy_matches:
+                item_id, confidence = fuzzy_matches[0]
+                return AutoMatchDetail(
+                    checklist_item_id=item_id,
+                    document_id=getattr(document, "id", None),
+                    document_name=document.file_name,
+                    matched_by=MatchMethod.AUTO_FUZZY,
+                    confidence=confidence,
+                )
+
+        return None
 
     def auto_match_documents(
         self,

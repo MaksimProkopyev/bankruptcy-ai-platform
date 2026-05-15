@@ -12,6 +12,7 @@ from app.api.v1 import (
     client_auth,
     client_cabinet,
     clients,
+    completeness,
     documents,
     lead_sources,
     notifications,
@@ -34,6 +35,7 @@ api_router.include_router(notifications.router, prefix="/notifications", tags=["
 api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(lead_sources.router, prefix="/lead-sources", tags=["lead-sources"])
 api_router.include_router(prospects.router, prefix="/prospects", tags=["prospects"])
+api_router.include_router(completeness.router, tags=["completeness"])
 
 # Staff personal cabinet
 api_router.include_router(staff.router, prefix="/staff", tags=["staff"])

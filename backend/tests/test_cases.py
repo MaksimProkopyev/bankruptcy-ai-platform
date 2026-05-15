@@ -4,7 +4,7 @@ import pytest
 from httpx import AsyncClient
 
 
-async def create_test_client(client: AsyncClient) -> str:
+async def create_test_client(client: AsyncClient, headers: dict) -> str:
     res = await client.post(
         "/api/v1/clients/",
         json={
@@ -12,13 +12,14 @@ async def create_test_client(client: AsyncClient) -> str:
             "last_name": "Тестов",
             "phone": "+79999999999",
         },
+        headers=headers,
     )
     return res.json()["id"]
 
 
 @pytest.mark.asyncio
-async def test_create_case(client: AsyncClient):
-    client_id = await create_test_client(client)
+async def test_create_case(client: AsyncClient, admin_headers):
+    client_id = await create_test_client(client, admin_headers)
 
     res = await client.post(
         "/api/v1/cases/",
@@ -26,6 +27,7 @@ async def test_create_case(client: AsyncClient):
             "client_id": client_id,
             "total_debt": 850000,
         },
+        headers=admin_headers,
     )
     assert res.status_code == 201
     data = res.json()
@@ -35,10 +37,10 @@ async def test_create_case(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_update_case_status(client: AsyncClient):
-    client_id = await create_test_client(client)
+async def test_update_case_status(client: AsyncClient, admin_headers):
+    client_id = await create_test_client(client, admin_headers)
 
-    res = await client.post("/api/v1/cases/", json={"client_id": client_id})
+    res = await client.post("/api/v1/cases/", json={"client_id": client_id}, headers=admin_headers)
     case_id = res.json()["id"]
 
     # Update status
@@ -47,15 +49,16 @@ async def test_update_case_status(client: AsyncClient):
         json={
             "status": "qualification",
         },
+        headers=admin_headers,
     )
     assert res.status_code == 200
     assert res.json()["status"] == "qualification"
 
 
 @pytest.mark.asyncio
-async def test_add_creditor(client: AsyncClient):
-    client_id = await create_test_client(client)
-    res = await client.post("/api/v1/cases/", json={"client_id": client_id})
+async def test_add_creditor(client: AsyncClient, admin_headers):
+    client_id = await create_test_client(client, admin_headers)
+    res = await client.post("/api/v1/cases/", json={"client_id": client_id}, headers=admin_headers)
     case_id = res.json()["id"]
 
     res = await client.post(
@@ -65,6 +68,7 @@ async def test_add_creditor(client: AsyncClient):
             "creditor_type": "bank",
             "total_amount": 500000,
         },
+        headers=admin_headers,
     )
     assert res.status_code == 201
     assert res.json()["name"] == "Сбербанк"

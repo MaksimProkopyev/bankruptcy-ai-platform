@@ -18,9 +18,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add document_type column to documents table if it doesn't already exist
+    # Add document_type column to documents table if it doesn't already exist,
+    # then ensure it is nullable (migration 001 created it as NOT NULL).
     op.execute(
         "ALTER TABLE documents ADD COLUMN IF NOT EXISTS document_type VARCHAR(50)"
+    )
+    op.execute(
+        "ALTER TABLE documents ALTER COLUMN document_type DROP NOT NULL"
     )
 
     # Create case_checklist_items table

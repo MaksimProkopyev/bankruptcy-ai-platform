@@ -1,14 +1,14 @@
 """Pydantic schemas for API serialization."""
 
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
-from uuid import UUID
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
-
 # ---- Auth ----
+
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -21,6 +21,7 @@ class LoginRequest(BaseModel):
 
 
 # ---- Users ----
+
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -48,6 +49,7 @@ class UserResponse(BaseModel):
 
 
 # ---- Clients ----
+
 
 class ClientCreate(BaseModel):
     first_name: str
@@ -81,6 +83,7 @@ class ClientResponse(BaseModel):
 
 
 # ---- Cases ----
+
 
 class CaseCreate(BaseModel):
     client_id: UUID
@@ -139,6 +142,7 @@ class CaseDetailResponse(CaseResponse):
 
 # ---- Creditors ----
 
+
 class CreditorCreate(BaseModel):
     name: str
     creditor_type: str
@@ -168,6 +172,7 @@ class CreditorResponse(BaseModel):
 
 # ---- Documents ----
 
+
 class DocumentResponse(BaseModel):
     id: UUID
     document_type: str
@@ -181,6 +186,7 @@ class DocumentResponse(BaseModel):
 
 
 # ---- Deadlines ----
+
 
 class DeadlineCreate(BaseModel):
     title: str
@@ -205,6 +211,7 @@ class DeadlineResponse(BaseModel):
 
 # ---- Events ----
 
+
 class CaseEventResponse(BaseModel):
     id: UUID
     event_type: str
@@ -217,6 +224,7 @@ class CaseEventResponse(BaseModel):
 
 
 # ---- AI Tasks ----
+
 
 class AITaskRequest(BaseModel):
     agent_name: str
@@ -242,8 +250,10 @@ class AITaskResponse(BaseModel):
 
 # ---- Qualification (чат-бот) ----
 
+
 class QualificationInput(BaseModel):
     """Данные от чат-бота квалификации."""
+
     total_debt: Decimal
     creditors_count: int
     creditor_types: list[str]  # bank, mfo, individual, tax
@@ -259,6 +269,7 @@ class QualificationInput(BaseModel):
 
 class QualificationResult(BaseModel):
     """Результат AI-квалификации."""
+
     is_eligible: bool
     recommended_procedure: str  # judicial, extrajudicial, not_eligible
     procedure_type: Optional[str] = None  # asset_realization, restructuring
@@ -273,8 +284,10 @@ class QualificationResult(BaseModel):
 
 # ---- Lead creation from chatbot ----
 
+
 class LeadCreate(BaseModel):
     """Данные для создания лида из чат-бота."""
+
     client: ClientCreate
     qualification: QualificationResult
     utm_source: Optional[str] = None
@@ -285,6 +298,7 @@ class LeadCreate(BaseModel):
 
 class LeadResponse(BaseModel):
     """Ответ после создания лида."""
+
     client: ClientResponse
     case: CaseResponse
     ai_task: Optional[AITaskResponse] = None
@@ -293,6 +307,7 @@ class LeadResponse(BaseModel):
 
 
 # ---- Lead collector (external gov sources) ----
+
 
 class LeadListResponse(BaseModel):
     id: UUID
@@ -351,6 +366,7 @@ class LeadConvertResponse(BaseModel):
 
 # ---- Pagination ----
 
+
 class PaginatedResponse(BaseModel):
     items: list
     total: int
@@ -361,8 +377,10 @@ class PaginatedResponse(BaseModel):
 
 # ---- Consultant FAQ-bot ----
 
+
 class ConsultantMessageRequest(BaseModel):
     """Запрос к FAQ-боту консультанту."""
+
     message: str
     conversation_id: Optional[str] = None
     channel: str = "web"  # web, telegram, lk
@@ -371,6 +389,7 @@ class ConsultantMessageRequest(BaseModel):
 
 class ConsultantMessageResponse(BaseModel):
     """Ответ от FAQ-бота консультанта."""
+
     reply: str
     sources: list[dict]
     conversation_id: str
@@ -379,6 +398,7 @@ class ConsultantMessageResponse(BaseModel):
 
 
 # ---- Staff / Tasks ----
+
 
 class TaskResponse(BaseModel):
     id: UUID
@@ -399,6 +419,7 @@ class TaskStatusUpdate(BaseModel):
 
 
 # ---- Staff / Suggestions ----
+
 
 class SuggestionCreate(BaseModel):
     title: str
@@ -425,6 +446,7 @@ class SuggestionResponse(BaseModel):
 
 # ---- Staff / Dashboard ----
 
+
 class StaffDashboardResponse(BaseModel):
     user: dict
     my_cases_count: int
@@ -434,4 +456,3 @@ class StaffDashboardResponse(BaseModel):
     team_cases_active: Optional[int] = None
     team_tasks_open: Optional[int] = None
     team_overdue_deadlines: Optional[int] = None
-

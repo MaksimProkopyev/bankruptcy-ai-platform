@@ -1,22 +1,21 @@
 """Case checklist item model for document completeness tracking."""
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import (
-    String, Text, DateTime, ForeignKey, UniqueConstraint, Index, text
-)
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import func
 
 from app.models.models import Base
 
 
 class ChecklistItemStatus(StrEnum):
     """Status of a checklist item."""
+
     MISSING = "missing"
     UPLOADED = "uploaded"
     REVIEW = "review"
@@ -27,6 +26,7 @@ class ChecklistItemStatus(StrEnum):
 
 class MatchMethod(StrEnum):
     """How the document was matched to checklist item."""
+
     MANUAL = "manual"
     AUTO_TYPE = "auto_type"
     AUTO_FUZZY = "auto_fuzzy"
@@ -71,9 +71,7 @@ class CaseChecklistItem(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )

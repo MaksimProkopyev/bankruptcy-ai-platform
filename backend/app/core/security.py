@@ -1,14 +1,13 @@
 """Auth & security utilities."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 from uuid import UUID
 
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -58,14 +57,8 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
     # Set session-local vars for PostgreSQL RLS policies
-    await db.execute(
-        text("SELECT set_config('app.current_user_id', :uid, true)"),
-        {"uid": str(user.id)}
-    )
-    await db.execute(
-        text("SELECT set_config('app.current_user_role', :role, true)"),
-        {"role": user.role}
-    )
+    await db.execute(text("SELECT set_config('app.current_user_id', :uid, true)"), {"uid": str(user.id)})
+    await db.execute(text("SELECT set_config('app.current_user_role', :role, true)"), {"role": user.role})
 
     return user
 
@@ -85,7 +78,14 @@ class RoleChecker:
 # Role shortcuts
 require_admin = RoleChecker([UserRole.admin])
 require_lawyer = RoleChecker([UserRole.admin, UserRole.operations_director, UserRole.lawyer])
-require_staff = RoleChecker([
-    UserRole.admin, UserRole.operations_director, UserRole.lawyer,
-    UserRole.paralegal, UserRole.client_manager, UserRole.marketer, UserRole.ai_engineer,
-])
+require_staff = RoleChecker(
+    [
+        UserRole.admin,
+        UserRole.operations_director,
+        UserRole.lawyer,
+        UserRole.paralegal,
+        UserRole.client_manager,
+        UserRole.marketer,
+        UserRole.ai_engineer,
+    ]
+)

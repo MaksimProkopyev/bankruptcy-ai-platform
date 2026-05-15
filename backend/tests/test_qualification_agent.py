@@ -1,9 +1,9 @@
 """Unit tests for QualificationAgent (LLM-based qualification)."""
 
-import sys
-import os
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+import os
+import sys
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,7 +14,6 @@ from agents.qualification import (
     QualificationAgent,
     QualificationInput,
     QualificationResult,
-    pre_screen,
 )
 
 
@@ -41,50 +40,58 @@ class TestQualificationAgent:
 
     @pytest.fixture
     def mock_anthropic_client(self):
-        with patch("agents.qualification.anthropic.Anthropic") as MockAnthropic:
+        with patch("agents.qualification.anthropic.Anthropic") as mock_anthropic_cls:
             mock_client = MagicMock()
             mock_message = MagicMock()
-            mock_message.content = [MagicMock(text=json.dumps({
-                "is_eligible": True,
-                "recommended_procedure": "judicial",
-                "procedure_type": "asset_realization",
-                "estimated_cost_min": 80000,
-                "estimated_cost_max": 150000,
-                "estimated_duration_months_min": 8,
-                "estimated_duration_months_max": 12,
-                "risk_level": "medium",
-                "risk_factors": ["risk:transactions_3y"],
-                "confidence": 0.85,
-                "explanation": "Объяснение от AI",
-                "needs_lawyer_review": True,
-            }))]
+            mock_message.content = [
+                MagicMock(
+                    text=json.dumps(
+                        {
+                            "is_eligible": True,
+                            "recommended_procedure": "judicial",
+                            "procedure_type": "asset_realization",
+                            "estimated_cost_min": 80000,
+                            "estimated_cost_max": 150000,
+                            "estimated_duration_months_min": 8,
+                            "estimated_duration_months_max": 12,
+                            "risk_level": "medium",
+                            "risk_factors": ["risk:transactions_3y"],
+                            "confidence": 0.85,
+                            "explanation": "Объяснение от AI",
+                            "needs_lawyer_review": True,
+                        }
+                    )
+                )
+            ]
             mock_client.messages.create.return_value = mock_message
-            MockAnthropic.return_value = mock_client
+            mock_anthropic_cls.return_value = mock_client
             yield mock_client
 
     @pytest.fixture
     def mock_openai_client(self):
-        with patch("agents.qualification.OpenAI") as MockOpenAI:
+        with patch("agents.qualification.OpenAI") as mock_openai_cls:
             mock_client = MagicMock()
             mock_completion = MagicMock()
             mock_choice = MagicMock()
-            mock_choice.message.content = json.dumps({
-                "is_eligible": True,
-                "recommended_procedure": "judicial",
-                "procedure_type": "restructuring",
-                "estimated_cost_min": 90000,
-                "estimated_cost_max": 140000,
-                "estimated_duration_months_min": 9,
-                "estimated_duration_months_max": 15,
-                "risk_level": "low",
-                "risk_factors": [],
-                "confidence": 0.9,
-                "explanation": "Объяснение от OpenAI",
-                "needs_lawyer_review": False,
-            })
+            mock_choice.message.content = json.dumps(
+                {
+                    "is_eligible": True,
+                    "recommended_procedure": "judicial",
+                    "procedure_type": "restructuring",
+                    "estimated_cost_min": 90000,
+                    "estimated_cost_max": 140000,
+                    "estimated_duration_months_min": 9,
+                    "estimated_duration_months_max": 15,
+                    "risk_level": "low",
+                    "risk_factors": [],
+                    "confidence": 0.9,
+                    "explanation": "Объяснение от OpenAI",
+                    "needs_lawyer_review": False,
+                }
+            )
             mock_completion.choices = [mock_choice]
             mock_client.chat.completions.create.return_value = mock_completion
-            MockOpenAI.return_value = mock_client
+            mock_openai_cls.return_value = mock_client
             yield mock_client
 
     @pytest.mark.asyncio
@@ -126,10 +133,10 @@ class TestQualificationAgent:
     @pytest.mark.asyncio
     async def test_qualify_both_providers_fail(self):
         """Agent returns rule-based fallback when both providers fail."""
-        with patch("agents.qualification.anthropic.Anthropic") as MockAnthropic:
-            MockAnthropic.side_effect = Exception("No API key")
-            with patch("agents.qualification.OpenAI") as MockOpenAI:
-                MockOpenAI.side_effect = Exception("No API key")
+        with patch("agents.qualification.anthropic.Anthropic") as mock_anthropic_cls:
+            mock_anthropic_cls.side_effect = Exception("No API key")
+            with patch("agents.qualification.OpenAI") as mock_openai_cls:
+                mock_openai_cls.side_effect = Exception("No API key")
                 agent = QualificationAgent(
                     anthropic_api_key=None,
                     openai_api_key=None,

@@ -1,25 +1,30 @@
 """Documents API — upload, OCR, validation, checklist."""
 
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+
+import redis.asyncio as redis
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-import redis.asyncio as redis
 
-from app.db.session import get_db
-from app.models.models import Document, DocumentStatus, DocumentType, Case, CaseEvent, AITask
-from app.schemas.schemas import DocumentResponse
-from app.services.file_storage import get_storage
 from app.core.config import settings
 from app.core.permissions import require_permission
+from app.db.session import get_db
+from app.models.models import AITask, Case, CaseEvent, Document, DocumentStatus, DocumentType
+from app.schemas.schemas import DocumentResponse
+from app.services.file_storage import get_storage
 
 router = APIRouter()
 
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 
 
-@router.post("/upload/{case_id}", response_model=DocumentResponse, status_code=201,
-             dependencies=[Depends(require_permission("documents", "write"))])
+@router.post(
+    "/upload/{case_id}",
+    response_model=DocumentResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("documents", "write"))],
+)
 async def upload_document(
     case_id: UUID,
     document_type: str = Form(...),
@@ -84,21 +89,24 @@ async def upload_document(
         # Log but don't fail the upload
         print(f"Failed to push task to Redis: {e}")
 
-    db.add(CaseEvent(
-        case_id=case_id,
-        event_type="document_uploaded",
-        title=f"Загружен: {file.filename}",
-        is_system_event=True,
-        is_visible_to_client=True,
-    ))
+    db.add(
+        CaseEvent(
+            case_id=case_id,
+            event_type="document_uploaded",
+            title=f"Загружен: {file.filename}",
+            is_system_event=True,
+            is_visible_to_client=True,
+        )
+    )
 
     await db.commit()
     await db.refresh(document)
     return document
 
 
-@router.get("/{document_id}", response_model=DocumentResponse,
-            dependencies=[Depends(require_permission("documents", "read"))])
+@router.get(
+    "/{document_id}", response_model=DocumentResponse, dependencies=[Depends(require_permission("documents", "read"))]
+)
 async def get_document(document_id: UUID, db: AsyncSession = Depends(get_db)):
     doc = await db.get(Document, document_id)
     if not doc:
@@ -106,8 +114,7 @@ async def get_document(document_id: UUID, db: AsyncSession = Depends(get_db)):
     return doc
 
 
-@router.get("/{document_id}/download",
-            dependencies=[Depends(require_permission("documents", "read"))])
+@router.get("/{document_id}/download", dependencies=[Depends(require_permission("documents", "read"))])
 async def download_document(document_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get presigned URL for download."""
     doc = await db.get(Document, document_id)
@@ -118,8 +125,7 @@ async def download_document(document_id: UUID, db: AsyncSession = Depends(get_db
     return {"download_url": url, "file_name": doc.file_name}
 
 
-@router.get("/{document_id}/extracted-data",
-            dependencies=[Depends(require_permission("documents", "read"))])
+@router.get("/{document_id}/extracted-data", dependencies=[Depends(require_permission("documents", "read"))])
 async def get_extracted_data(document_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get AI-extracted structured data."""
     doc = await db.get(Document, document_id)
@@ -133,17 +139,17 @@ async def get_extracted_data(document_id: UUID, db: AsyncSession = Depends(get_d
     }
 
 
-@router.get("/case/{case_id}", response_model=list[DocumentResponse],
-            dependencies=[Depends(require_permission("documents", "read"))])
+@router.get(
+    "/case/{case_id}",
+    response_model=list[DocumentResponse],
+    dependencies=[Depends(require_permission("documents", "read"))],
+)
 async def list_case_documents(case_id: UUID, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Document).where(Document.case_id == case_id).order_by(Document.created_at.desc())
-    )
+    result = await db.execute(select(Document).where(Document.case_id == case_id).order_by(Document.created_at.desc()))
     return result.scalars().all()
 
 
-@router.post("/{document_id}/validate",
-             dependencies=[Depends(require_permission("documents", "write"))])
+@router.post("/{document_id}/validate", dependencies=[Depends(require_permission("documents", "write"))])
 async def validate_document(
     document_id: UUID,
     approved: bool,
@@ -156,11 +162,13 @@ async def validate_document(
         raise HTTPException(status_code=404, detail="Document not found")
 
     doc.status = DocumentStatus.validated if approved else DocumentStatus.rejected
-    db.add(CaseEvent(
-        case_id=doc.case_id,
-        event_type="document_uploaded",
-        title=f"Документ {'утверждён' if approved else 'отклонён'}: {doc.file_name}",
-        description=notes,
-    ))
+    db.add(
+        CaseEvent(
+            case_id=doc.case_id,
+            event_type="document_uploaded",
+            title=f"Документ {'утверждён' if approved else 'отклонён'}: {doc.file_name}",
+            description=notes,
+        )
+    )
     await db.commit()
-    return {"status": doc.status.value if hasattr(doc.status, 'value') else doc.status}
+    return {"status": doc.status.value if hasattr(doc.status, "value") else doc.status}

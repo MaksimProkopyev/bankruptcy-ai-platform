@@ -7,17 +7,21 @@ import asyncio
 import random
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from uuid import uuid4
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.core.security import hash_password
 from app.db.session import AsyncSessionLocal
 from app.models.models import (
-    User, Client, Case, Creditor, CaseEvent, Deadline, Payment,
-    UserRole, CaseStatus, ProcedureType,
+    Case,
+    CaseEvent,
+    CaseStatus,
+    Client,
+    Creditor,
+    Deadline,
+    Payment,
+    ProcedureType,
+    User,
+    UserRole,
 )
-from app.core.security import hash_password
-
 
 LAWYERS = [
     {"first_name": "Алексей", "last_name": "Иванов", "email": "ivanov@bankruptcy.ai"},
@@ -31,9 +35,27 @@ MANAGERS = [
 
 CLIENTS_DATA = [
     {"first_name": "Иван", "last_name": "Сидоров", "phone": "+79001234501", "region": "Москва", "debt": 1_250_000},
-    {"first_name": "Ольга", "last_name": "Новикова", "phone": "+79001234502", "region": "Санкт-Петербург", "debt": 780_000},
-    {"first_name": "Андрей", "last_name": "Морозов", "phone": "+79001234503", "region": "Новосибирск", "debt": 2_400_000},
-    {"first_name": "Наталья", "last_name": "Волкова", "phone": "+79001234504", "region": "Екатеринбург", "debt": 560_000},
+    {
+        "first_name": "Ольга",
+        "last_name": "Новикова",
+        "phone": "+79001234502",
+        "region": "Санкт-Петербург",
+        "debt": 780_000,
+    },
+    {
+        "first_name": "Андрей",
+        "last_name": "Морозов",
+        "phone": "+79001234503",
+        "region": "Новосибирск",
+        "debt": 2_400_000,
+    },
+    {
+        "first_name": "Наталья",
+        "last_name": "Волкова",
+        "phone": "+79001234504",
+        "region": "Екатеринбург",
+        "debt": 560_000,
+    },
     {"first_name": "Сергей", "last_name": "Лебедев", "phone": "+79001234505", "region": "Казань", "debt": 3_100_000},
     {"first_name": "Татьяна", "last_name": "Кузнецова", "phone": "+79001234506", "region": "Москва", "debt": 920_000},
     {"first_name": "Павел", "last_name": "Соколов", "phone": "+79001234507", "region": "Краснодар", "debt": 450_000},
@@ -41,7 +63,13 @@ CLIENTS_DATA = [
     {"first_name": "Виктор", "last_name": "Егоров", "phone": "+79001234509", "region": "Воронеж", "debt": 670_000},
     {"first_name": "Людмила", "last_name": "Козлова", "phone": "+79001234510", "region": "Самара", "debt": 1_050_000},
     {"first_name": "Михаил", "last_name": "Степанов", "phone": "+79001234511", "region": "Москва", "debt": 5_200_000},
-    {"first_name": "Екатерина", "last_name": "Фёдорова", "phone": "+79001234512", "region": "Ростов-на-Дону", "debt": 340_000},
+    {
+        "first_name": "Екатерина",
+        "last_name": "Фёдорова",
+        "phone": "+79001234512",
+        "region": "Ростов-на-Дону",
+        "debt": 340_000,
+    },
 ]
 
 BANK_NAMES = ["Сбербанк", "ВТБ", "Альфа-Банк", "Тинькофф", "Газпромбанк", "Россельхозбанк", "Райффайзен"]
@@ -63,7 +91,8 @@ STATUSES_DISTRIBUTION = [
 async def seed():
     async with AsyncSessionLocal() as db:
         # Check if already seeded
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
+
         count = await db.execute(select(func.count(User.id)))
         if count.scalar_one() > 0:
             print("Database already has data. Skipping seed.")
@@ -169,8 +198,13 @@ async def seed():
                 ai_score=Decimal(str(ai_score)) if ai_score else None,
                 ai_risk_level=risk_level,
                 service_fee=Decimal(random.choice([80000, 90000, 100000, 110000, 120000])),
-                court_name=f"Арбитражный суд {cdata['region']}" if status.value not in ("lead", "qualification", "consultation") else None,
-                filing_date=(now - timedelta(days=random.randint(30, 90))).date() if status.value in ("application_filed", "court_accepted", "procedure_started", "asset_realization", "debt_discharged") else None,
+                court_name=f"Арбитражный суд {cdata['region']}"
+                if status.value not in ("lead", "qualification", "consultation")
+                else None,
+                filing_date=(now - timedelta(days=random.randint(30, 90))).date()
+                if status.value
+                in ("application_filed", "court_accepted", "procedure_started", "asset_realization", "debt_discharged")
+                else None,
                 created_at=client.created_at,
             )
             db.add(case)
@@ -187,7 +221,8 @@ async def seed():
                     total_amount=Decimal(random.randint(50000, cdata["debt"] // 2)),
                     principal_amount=Decimal(random.randint(40000, cdata["debt"] // 3)),
                     is_secured=(j == 0 and random.random() > 0.7),
-                    included_in_registry=status.value in ("creditors_registry", "creditors_meeting", "asset_realization", "debt_discharged"),
+                    included_in_registry=status.value
+                    in ("creditors_registry", "creditors_meeting", "asset_realization", "debt_discharged"),
                 )
                 db.add(creditor)
 
@@ -216,16 +251,24 @@ async def seed():
                 db.add(event2)
 
             # Deadlines for active cases
-            if status.value in ("document_collection", "application_preparation", "application_filed", "procedure_started", "asset_realization"):
+            if status.value in (
+                "document_collection",
+                "application_preparation",
+                "application_filed",
+                "procedure_started",
+                "asset_realization",
+            ):
                 deadline = Deadline(
                     case_id=case.id,
-                    title=random.choice([
-                        "Подать заявление в суд",
-                        "Собрать недостающие документы",
-                        "Подготовить отзыв на требования",
-                        "Публикация в ЕФРСБ",
-                        "Подготовка к заседанию",
-                    ]),
+                    title=random.choice(
+                        [
+                            "Подать заявление в суд",
+                            "Собрать недостающие документы",
+                            "Подготовить отзыв на требования",
+                            "Публикация в ЕФРСБ",
+                            "Подготовка к заседанию",
+                        ]
+                    ),
                     due_date=now + timedelta(days=random.randint(3, 30)),
                     priority=random.choice(["medium", "high", "critical"]),
                     status="pending",

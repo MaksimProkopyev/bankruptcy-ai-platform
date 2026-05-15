@@ -5,29 +5,33 @@ Flow: template + case data → AI fills variables → HTML → PDF/DOCX
 
 import hashlib
 import re
-from datetime import datetime, date
+from datetime import datetime
 from uuid import UUID
-from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.models import Case, Client, Creditor
-from app.models.billing_models import DocumentTemplate, DocumentDraft
-
+from app.models.billing_models import DocumentDraft, DocumentTemplate
+from app.models.models import Case, Client
 
 # ─── Variable resolver ───────────────────────────────────────
+
 
 def _resolve_variables(case: Case, client: Client, creditors: list) -> dict:
     """Build a dict of all available template variables from case data."""
     full_name = f"{client.last_name or ''} {client.first_name or ''} {client.patronymic or ''}".strip()
-    
-    creditors_text = "\n".join([
-        f"{i+1}. {c.name} ({c.creditor_type}) — {c.total_amount:,.0f} руб."
-        + (f" (договор № {c.contract_number})" if c.contract_number else "")
-        for i, c in enumerate(creditors)
-    ]) or "Информация о кредиторах прилагается отдельно."
+
+    creditors_text = (
+        "\n".join(
+            [
+                f"{i + 1}. {c.name} ({c.creditor_type}) — {c.total_amount:,.0f} руб."
+                + (f" (договор № {c.contract_number})" if c.contract_number else "")
+                for i, c in enumerate(creditors)
+            ]
+        )
+        or "Информация о кредиторах прилагается отдельно."
+    )
 
     total_debt = sum(c.total_amount for c in creditors) if creditors else (case.total_debt or 0)
 
@@ -43,7 +47,6 @@ def _resolve_variables(case: Case, client: Client, creditors: list) -> dict:
         "client_snils": client.snils or "___________",
         "client_birth_date": client.birth_date.strftime("%d.%m.%Y") if client.birth_date else "___________",
         "client_registration_address": getattr(client, "registration_address", "___________") or "___________",
-        
         # Case
         "case_number": case.case_number or "",
         "court_case_number": case.court_case_number or "",
@@ -54,16 +57,13 @@ def _resolve_variables(case: Case, client: Client, creditors: list) -> dict:
         "court_name": case.court_name or "___________",
         "financial_manager": case.financial_manager_name or "___________",
         "financial_manager_sro": case.financial_manager_sro or "___________",
-        
         # Fees
         "service_fee": f"{case.service_fee:,.0f}" if case.service_fee else "___________",
         "service_fee_words": _num_to_words(float(case.service_fee or 0)),
-        
         # Dates
         "today_date": datetime.now().strftime("%d.%m.%Y"),
         "contract_date": datetime.now().strftime("%d.%m.%Y"),
         "filing_date": case.filing_date.strftime("%d.%m.%Y") if case.filing_date else "___________",
-        
         # Company
         "company_name": 'ООО "Банкротство.AI"',
         "company_inn": "7700000000",
@@ -94,12 +94,14 @@ def _num_to_words(n: float) -> str:
 
 # ─── Template filling ────────────────────────────────────────
 
+
 def fill_template(template_html: str, variables: dict) -> str:
     """Replace {{variable}} placeholders with values."""
+
     def replacer(match):
         var_name = match.group(1).strip()
         return str(variables.get(var_name, f"[{var_name}]"))
-    
+
     return re.sub(r"\{\{(\w+)\}\}", replacer, template_html)
 
 
@@ -110,6 +112,7 @@ def compute_hash(content: str) -> str:
 
 # ─── Service class ────────────────────────────────────────────
 
+
 class DocumentService:
     """Generate and manage legal documents from templates."""
 
@@ -117,7 +120,7 @@ class DocumentService:
         self.db = db
 
     async def list_templates(self, category: str | None = None) -> list[DocumentTemplate]:
-        query = select(DocumentTemplate).where(DocumentTemplate.is_active == True)
+        query = select(DocumentTemplate).where(DocumentTemplate.is_active)
         if category:
             query = query.where(DocumentTemplate.category == category)
         result = await self.db.execute(query.order_by(DocumentTemplate.name))
@@ -136,11 +139,7 @@ class DocumentService:
             raise ValueError("Template not found")
 
         # Load case with relations
-        case = await self.db.execute(
-            select(Case)
-            .options(selectinload(Case.creditors))
-            .where(Case.id == case_id)
-        )
+        case = await self.db.execute(select(Case).options(selectinload(Case.creditors)).where(Case.id == case_id))
         case = case.scalar_one_or_none()
         if not case:
             raise ValueError("Case not found")
@@ -184,9 +183,7 @@ class DocumentService:
         await self.db.flush()
         return draft
 
-    async def approve_draft(
-        self, draft_id: UUID, reviewer_id: UUID, notes: str | None = None
-    ) -> DocumentDraft:
+    async def approve_draft(self, draft_id: UUID, reviewer_id: UUID, notes: str | None = None) -> DocumentDraft:
         """Lawyer approves a draft."""
         draft = await self.db.get(DocumentDraft, draft_id)
         if not draft:
@@ -221,19 +218,19 @@ SEED_TEMPLATES = [
 <p>на оказание юридических услуг по сопровождению процедуры банкротства</p>
 <p>г. Москва &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {{contract_date}}</p>
 
-<p>{{company_name}}, ИНН {{company_inn}}, в лице директора, действующего на основании Устава, 
+<p>{{company_name}}, ИНН {{company_inn}}, в лице директора, действующего на основании Устава,
 именуемое в дальнейшем «Исполнитель», с одной стороны, и</p>
 
-<p>{{client_full_name}}, ИНН {{client_inn}}, СНИЛС {{client_snils}}, 
-проживающий по адресу: {{client_registration_address}}, 
+<p>{{client_full_name}}, ИНН {{client_inn}}, СНИЛС {{client_snils}},
+проживающий по адресу: {{client_registration_address}},
 именуемый в дальнейшем «Заказчик», с другой стороны,</p>
 
 <p>заключили настоящий Договор о нижеследующем:</p>
 
 <h2>1. ПРЕДМЕТ ДОГОВОРА</h2>
-<p>1.1. Исполнитель обязуется оказать Заказчику юридические услуги по сопровождению процедуры 
+<p>1.1. Исполнитель обязуется оказать Заказчику юридические услуги по сопровождению процедуры
 банкротства физического лица в соответствии с ФЗ-127 «О несостоятельности (банкротстве)».</p>
-<p>1.2. Общая сумма задолженности Заказчика перед кредиторами составляет {{total_debt}} 
+<p>1.2. Общая сумма задолженности Заказчика перед кредиторами составляет {{total_debt}}
 ({{total_debt_words}}) перед {{creditors_count}} кредиторами.</p>
 
 <h2>2. СТОИМОСТЬ УСЛУГ</h2>
@@ -241,14 +238,14 @@ SEED_TEMPLATES = [
 <p>2.2. Оплата производится в соответствии с графиком, приведённым в Приложении №1.</p>
 
 <h2>3. ОБЯЗАННОСТИ СТОРОН</h2>
-<p>3.1. Исполнитель обязуется: подготовить и подать заявление о банкротстве, представлять интересы 
+<p>3.1. Исполнитель обязуется: подготовить и подать заявление о банкротстве, представлять интересы
 Заказчика в суде, обеспечить взаимодействие с финансовым управляющим, контролировать сроки.</p>
-<p>3.2. Заказчик обязуется: предоставить достоверные документы, своевременно оплачивать услуги, 
+<p>3.2. Заказчик обязуется: предоставить достоверные документы, своевременно оплачивать услуги,
 не совершать сделки с имуществом без согласования с Исполнителем.</p>
 
 <h2>4. ЭЛЕКТРОННАЯ ПОДПИСЬ</h2>
-<p>4.1. Стороны договорились, что подписание настоящего Договора посредством ввода SMS-кода, 
-направленного на номер {{client_phone}}, является аналогом собственноручной подписи Заказчика 
+<p>4.1. Стороны договорились, что подписание настоящего Договора посредством ввода SMS-кода,
+направленного на номер {{client_phone}}, является аналогом собственноручной подписи Заказчика
 в соответствии со ст. 6 ФЗ-63 «Об электронной подписи».</p>
 
 <p style="margin-top:40px">Исполнитель: {{company_name}}<br/>
@@ -270,10 +267,10 @@ SEED_TEMPLATES = [
         "description": "Доверенность на представление интересов в арбитражном суде",
         "content_html": """<h1>ДОВЕРЕННОСТЬ</h1>
 <p>г. Москва &nbsp;&nbsp;&nbsp;&nbsp; {{today_date}}</p>
-<p>Я, {{client_full_name}}, {{client_birth_date}} года рождения, ИНН {{client_inn}}, 
+<p>Я, {{client_full_name}}, {{client_birth_date}} года рождения, ИНН {{client_inn}},
 СНИЛС {{client_snils}}, проживающий по адресу: {{client_registration_address}},</p>
-<p>настоящей доверенностью уполномочиваю {{company_name}} представлять мои интересы 
-в Арбитражном суде по делу о банкротстве, с правом подачи заявлений, ходатайств, 
+<p>настоящей доверенностью уполномочиваю {{company_name}} представлять мои интересы
+в Арбитражном суде по делу о банкротстве, с правом подачи заявлений, ходатайств,
 получения документов и совершения иных процессуальных действий.</p>
 <p>Доверенность выдана сроком на один год без права передоверия.</p>
 <p style="margin-top:40px">Доверитель: {{client_full_name}}<br/>Подпись: ___________________</p>""",
@@ -289,7 +286,7 @@ SEED_TEMPLATES = [
         "content_html": """<h1>АКТ № ____ выполненных работ</h1>
 <p>к Договору № {{case_number}} от {{contract_date}}</p>
 <p>г. Москва &nbsp;&nbsp;&nbsp;&nbsp; {{today_date}}</p>
-<p>{{company_name}} (Исполнитель) и {{client_full_name}} (Заказчик) составили настоящий Акт 
+<p>{{company_name}} (Исполнитель) и {{client_full_name}} (Заказчик) составили настоящий Акт
 о том, что Исполнитель оказал, а Заказчик принял следующие услуги:</p>
 <table border="1" cellpadding="8" style="border-collapse:collapse;width:100%">
 <tr><th>Услуга</th><th>Стоимость</th></tr>
@@ -310,9 +307,9 @@ SEED_TEMPLATES = [
         "category": "consent",
         "description": "Согласие на обработку ПД (152-ФЗ)",
         "content_html": """<h1>СОГЛАСИЕ на обработку персональных данных</h1>
-<p>Я, {{client_full_name}}, даю своё согласие {{company_name}} на обработку моих персональных 
+<p>Я, {{client_full_name}}, даю своё согласие {{company_name}} на обработку моих персональных
 данных в целях оказания юридических услуг по сопровождению процедуры банкротства.</p>
-<p>Перечень данных: ФИО, дата рождения, паспортные данные, ИНН, СНИЛС, контактная информация, 
+<p>Перечень данных: ФИО, дата рождения, паспортные данные, ИНН, СНИЛС, контактная информация,
 сведения о доходах, имуществе, обязательствах и кредитной истории.</p>
 <p>Согласие даётся на срок действия договора и 5 лет после его прекращения.</p>
 <p>Дата: {{today_date}}<br/>{{client_full_name}}</p>""",

@@ -1,24 +1,27 @@
 """AI API — proxy to AI Core service."""
 
 import time
-from uuid import UUID, uuid4
-from datetime import datetime
+from uuid import UUID
+
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import httpx
-
+from app.core.config import settings
+from app.core.permissions import require_permission
 from app.db.session import get_db
 from app.models.models import AITask, Case, CaseEvent, Client
-from app.core.config import settings
 from app.schemas.schemas import (
-    AITaskRequest, AITaskResponse,
-    QualificationInput, QualificationResult,
-    LeadCreate, LeadResponse,
-    ConsultantMessageRequest, ConsultantMessageResponse,
+    AITaskRequest,
+    AITaskResponse,
+    ConsultantMessageRequest,
+    ConsultantMessageResponse,
+    LeadCreate,
+    LeadResponse,
+    QualificationInput,
+    QualificationResult,
 )
-from app.core.permissions import require_permission
 
 router = APIRouter()
 
@@ -245,10 +248,7 @@ async def chat_with_consultant(
         task.status = "failed"
         task.error_message = f"AI Core error: {e.response.status_code}"
         await db.commit()
-        raise HTTPException(
-            status_code=502,
-            detail=f"AI Core service error: {e.response.status_code}"
-        )
+        raise HTTPException(status_code=502, detail=f"AI Core service error: {e.response.status_code}")
     except Exception as e:
         task.status = "failed"
         task.error_message = str(e)
@@ -266,8 +266,12 @@ async def chat_with_consultant(
     return ConsultantMessageResponse(**result)
 
 
-@router.post("/tasks", response_model=AITaskResponse, status_code=201,
-             dependencies=[Depends(require_permission("ai_tasks", "write"))])
+@router.post(
+    "/tasks",
+    response_model=AITaskResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("ai_tasks", "write"))],
+)
 async def create_ai_task(data: AITaskRequest, db: AsyncSession = Depends(get_db)):
     """Submit a task to the AI Core (OCR, document generation, etc.)."""
     task = AITask(
@@ -288,8 +292,9 @@ async def create_ai_task(data: AITaskRequest, db: AsyncSession = Depends(get_db)
     return task
 
 
-@router.get("/tasks/{task_id}", response_model=AITaskResponse,
-            dependencies=[Depends(require_permission("ai_tasks", "read"))])
+@router.get(
+    "/tasks/{task_id}", response_model=AITaskResponse, dependencies=[Depends(require_permission("ai_tasks", "read"))]
+)
 async def get_ai_task(task_id: UUID, db: AsyncSession = Depends(get_db)):
     """Check status and result of an AI task."""
     task = await db.get(AITask, task_id)
@@ -298,8 +303,7 @@ async def get_ai_task(task_id: UUID, db: AsyncSession = Depends(get_db)):
     return task
 
 
-@router.get("/tasks",
-            dependencies=[Depends(require_permission("ai_tasks", "read"))])
+@router.get("/tasks", dependencies=[Depends(require_permission("ai_tasks", "read"))])
 async def list_tasks(
     status: str | None = None,
     agent_name: str | None = None,

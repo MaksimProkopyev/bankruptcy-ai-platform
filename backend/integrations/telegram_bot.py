@@ -8,10 +8,10 @@ Two modes:
 2. Existing clients → case status, document upload, Q&A
 """
 
-import os
+import asyncio
 import json
 import logging
-import asyncio
+import os
 from dataclasses import dataclass, field
 
 import httpx
@@ -84,7 +84,7 @@ async def handle_callback(chat_id: int, callback_data: str):
             "• Какие документы нужны для банкротства?\n"
             "• Сколько стоит банкротство для ИП?\n"
             "• Какие последствия у банкротства физлица?\n"
-            "• Можно ли списать долги по кредитам?"
+            "• Можно ли списать долги по кредитам?",
         )
         return
 
@@ -98,9 +98,7 @@ async def handle_callback(chat_id: int, callback_data: str):
 
     elif callback_data == "check_status":
         await send_message(
-            chat_id,
-            "Введите номер вашего дела (например, BK-2025-10001) "
-            "или номер телефона, указанный при обращении:"
+            chat_id, "Введите номер вашего дела (например, BK-2025-10001) или номер телефона, указанный при обращении:"
         )
         session.state = "client"
         sessions[chat_id] = session
@@ -110,14 +108,14 @@ async def handle_callback(chat_id: int, callback_data: str):
             chat_id,
             "📞 Позвоните нам: <b>8 800 123-45-67</b> (бесплатно)\n"
             "📧 Или напишите: info@bankruptcy.ai\n\n"
-            "Юрист перезвонит в течение 15 минут в рабочее время (9:00–19:00 МСК)."
+            "Юрист перезвонит в течение 15 минут в рабочее время (9:00–19:00 МСК).",
         )
 
     elif callback_data == "schedule_consultation":
         await send_message(
             chat_id,
             "Отлично! Для записи на бесплатную консультацию, пожалуйста, "
-            "отправьте ваш номер телефона, и мы свяжемся с вами."
+            "отправьте ваш номер телефона, и мы свяжемся с вами.",
         )
 
 
@@ -171,9 +169,7 @@ async def process_qualification(chat_id: int, user_text: str):
     except Exception as e:
         logger.error(f"AI Core error: {e}")
         await send_message(
-            chat_id,
-            "Извините, произошла техническая ошибка. "
-            "Попробуйте ещё раз или позвоните нам: 8 800 123-45-67"
+            chat_id, "Извините, произошла техническая ошибка. Попробуйте ещё раз или позвоните нам: 8 800 123-45-67"
         )
 
 
@@ -217,7 +213,7 @@ def format_qualification_result(result: dict) -> str:
 async def handle_consultant(chat_id: int, text: str):
     """Handle FAQ-bot consultant messages."""
     session = sessions.get(chat_id, Session(chat_id=chat_id))
-    
+
     # Call backend consultant endpoint
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -231,16 +227,16 @@ async def handle_consultant(chat_id: int, text: str):
                 },
             )
             data = res.json()
-            
+
             # Update session with new conversation_id if provided
             if data.get("conversation_id"):
                 session.session_id = data["conversation_id"]
                 sessions[chat_id] = session
-            
+
             # Send reply
             reply = data["reply"]
             await send_message(chat_id, reply)
-            
+
             # If CTA present, add inline button
             if data.get("cta"):
                 cta = data["cta"]
@@ -248,11 +244,7 @@ async def handle_consultant(chat_id: int, text: str):
                 await send_message(
                     chat_id,
                     cta.get("text", ""),
-                    reply_markup={
-                        "inline_keyboard": [
-                            [{"text": button_text, "callback_data": "start_qualification"}]
-                        ]
-                    }
+                    reply_markup={"inline_keyboard": [[{"text": button_text, "callback_data": "start_qualification"}]]},
                 )
     except Exception as e:
         logger.error(f"Consultant error: {e}")
@@ -260,10 +252,8 @@ async def handle_consultant(chat_id: int, text: str):
             chat_id,
             "Извините, произошла ошибка. Попробуйте позже или перейдите к квалификации.",
             reply_markup={
-                "inline_keyboard": [
-                    [{"text": "Начать квалификацию", "callback_data": "start_qualification"}]
-                ]
-            }
+                "inline_keyboard": [[{"text": "Начать квалификацию", "callback_data": "start_qualification"}]]
+            },
         )
 
 

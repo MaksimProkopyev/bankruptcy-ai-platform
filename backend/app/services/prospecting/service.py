@@ -1,32 +1,28 @@
 """Main prospecting service orchestrator."""
 
-from typing import Optional, List
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_
 from datetime import datetime, timedelta
-import uuid
 
-from app.models.prospect import Prospect, ProspectSourceConfig
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.lead_models import Lead
+from app.models.prospect import Prospect, ProspectSourceConfig
 from app.schemas.prospect import (
-    RawProspect,
     ProspectFilters,
-    ProspectStatsResponse,
-    SourceConfigResponse,
-    SourceConfigUpdate,
 )
-from .parsers import (
-    FSSPParser,
-    EFRSBParser,
-    KADArbitrParser,
-    FNSParser,
-    RosreestrParser,
-    MFCParser,
-)
-from .inbound import InboundProspectHandler
-from .scorer import ProspectScorer
-from .dedup import DeduplicationService
+
 from .converter import ProspectToLeadConverter
+from .dedup import DeduplicationService
+from .inbound import InboundProspectHandler
+from .parsers import (
+    EFRSBParser,
+    FNSParser,
+    FSSPParser,
+    KADArbitrParser,
+    MFCParser,
+    RosreestrParser,
+)
+from .scorer import ProspectScorer
 
 
 class ProspectingService:
@@ -45,7 +41,7 @@ class ProspectingService:
         # Получаем конфигурацию источника
         stmt = select(ProspectSourceConfig).where(
             ProspectSourceConfig.source_type == source_type,
-            ProspectSourceConfig.is_automated == True,
+            ProspectSourceConfig.is_automated,
         )
         result = await db.execute(stmt)
         source_config = result.scalar_one_or_none()
@@ -108,7 +104,7 @@ class ProspectingService:
                     )
                     db.add(prospect)
                     new += 1
-            except Exception as e:
+            except Exception:
                 errors += 1
                 # Логирование ошибки
 
@@ -130,8 +126,8 @@ class ProspectingService:
     async def run_all_automated(self, db: AsyncSession) -> dict:
         """Запустить все автоматические источники."""
         stmt = select(ProspectSourceConfig).where(
-            ProspectSourceConfig.is_automated == True,
-            ProspectSourceConfig.is_enabled == True,
+            ProspectSourceConfig.is_automated,
+            ProspectSourceConfig.is_enabled,
         )
         result = await db.execute(stmt)
         sources = result.scalars().all()
@@ -154,10 +150,12 @@ class ProspectingService:
                 total_results["details"].append(result)
             except Exception as e:
                 total_results["total_errors"] += 1
-                total_results["details"].append({
-                    "source_type": source.source_type,
-                    "error": str(e),
-                })
+                total_results["details"].append(
+                    {
+                        "source_type": source.source_type,
+                        "error": str(e),
+                    }
+                )
 
         return total_results
 
@@ -270,12 +268,14 @@ class ProspectingService:
             total_source = row[1]
             converted = row[2]
             rate = converted / total_source if total_source > 0 else 0
-            by_source.append({
-                "source_type": row[0],
-                "count": total_source,
-                "converted": converted,
-                "rate": round(rate, 2),
-            })
+            by_source.append(
+                {
+                    "source_type": row[0],
+                    "count": total_source,
+                    "converted": converted,
+                    "rate": round(rate, 2),
+                }
+            )
 
         # По температуре
         temp_query = select(Prospect.temperature, func.count(Prospect.id)).group_by(Prospect.temperature)

@@ -1,4 +1,5 @@
 """Async DB writer for LLM call logging."""
+
 from __future__ import annotations
 
 import logging
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class LlmDbWriter:
     """Writes LLM call records to the database.
-    
+
     Usage:
         writer = LlmDbWriter(async_session_factory)
         llm_logger.set_db_writer(writer.write)
@@ -25,7 +26,7 @@ class LlmDbWriter:
 
     async def write(self, log_entry: dict) -> None:
         """Write a single LLM call log entry to DB.
-        
+
         Called by LLMCallLogger as fire-and-forget.
         Creates its own session to avoid interfering with request sessions.
         """

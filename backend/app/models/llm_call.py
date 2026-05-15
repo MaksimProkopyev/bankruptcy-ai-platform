@@ -1,16 +1,14 @@
 """LLM Call tracking model."""
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import (
-    String, Integer, Boolean, Text, Numeric, DateTime, ForeignKey, Computed, Index, text
-)
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import func
+from sqlalchemy import Boolean, Computed, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.models import Base
 
@@ -18,7 +16,9 @@ from app.models.models import Base
 class LlmCall(Base):
     __tablename__ = "llm_calls"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
 
     # Provider & model
     provider: Mapped[str] = mapped_column(String(30), nullable=False)

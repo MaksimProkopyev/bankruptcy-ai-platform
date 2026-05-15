@@ -1,21 +1,21 @@
 """Tests for leadgen/prospecting layer."""
 
 import pytest
-import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from uuid import uuid4
 
-from app.main import app
-from app.models.prospect import Prospect, ProspectSourceConfig
+from app.models.prospect import Prospect
+from app.schemas.prospect import RawProspect
 from app.services.prospecting.parsers import (
-    FSSPParser, EFRSBParser, KADArbitrParser,
-    FNSParser, RosreestrParser, MFCParser,
+    EFRSBParser,
+    FNSParser,
+    FSSPParser,
+    KADArbitrParser,
+    MFCParser,
+    RosreestrParser,
 )
 from app.services.prospecting.scorer import ProspectScorer
-from app.schemas.prospect import RawProspect
-
 
 # === Тесты парсеров ===
+
 
 class TestParsers:
     """Тесты парсеров гос. источников (mock mode)."""
@@ -91,15 +91,19 @@ class TestParsers:
 
 # === Тесты скоринга ===
 
+
 class TestScorer:
     """Тесты предварительного скоринга."""
 
     def test_high_debt_scores_hot(self):
         scorer = ProspectScorer()
         prospect = RawProspect(
-            source_category="government", source_type="fssp",
-            debt_amount=2_000_000, phone="+79991234567",
-            region="77", creditor_count=5
+            source_category="government",
+            source_type="fssp",
+            debt_amount=2_000_000,
+            phone="+79991234567",
+            region="77",
+            creditor_count=5,
         )
         score, temp = scorer.score(prospect)
         assert score >= 60
@@ -107,10 +111,7 @@ class TestScorer:
 
     def test_low_debt_no_contact_scores_cold(self):
         scorer = ProspectScorer()
-        prospect = RawProspect(
-            source_category="manual", source_type="manual_entry",
-            debt_amount=100_000
-        )
+        prospect = RawProspect(source_category="manual", source_type="manual_entry", debt_amount=100_000)
         score, temp = scorer.score(prospect)
         assert score < 30
         assert temp == "cold"
@@ -118,32 +119,27 @@ class TestScorer:
     def test_referral_gets_bonus(self):
         scorer = ProspectScorer()
         prospect = RawProspect(
-            source_category="referral", source_type="client_referral",
-            phone="+79991234567", debt_amount=500_000
+            source_category="referral", source_type="client_referral", phone="+79991234567", debt_amount=500_000
         )
         score, _ = scorer.score(prospect)
         assert score >= 50  # referral bonus should push it up
 
     def test_region_moscow_bonus(self):
         scorer = ProspectScorer()
-        prospect = RawProspect(
-            source_category="government", source_type="fssp",
-            region="77", phone="+79991234567"
-        )
+        prospect = RawProspect(source_category="government", source_type="fssp", region="77", phone="+79991234567")
         score, _ = scorer.score(prospect)
         # 15 (government) + 15 (phone) + 5 (region) = 35 минимум
         assert score >= 35
 
     def test_score_range_0_100(self):
         scorer = ProspectScorer()
-        prospect = RawProspect(
-            source_category="manual", source_type="manual_entry"
-        )
+        prospect = RawProspect(source_category="manual", source_type="manual_entry")
         score, _ = scorer.score(prospect)
         assert 0 <= score <= 100
 
 
 # === Тесты API ===
+
 
 class TestProspectsAPI:
     """Тесты API-эндпоинтов."""
@@ -159,13 +155,16 @@ class TestProspectsAPI:
 
     @pytest.mark.asyncio
     async def test_inbound_prospect_created(self, client):
-        response = await client.post("/api/v1/prospects/inbound", json={
-            "source_type": "manual_entry",
-            "full_name": "Тестов Тест Тестович",
-            "phone": "+79991234567",
-            "debt_amount": 800000,
-            "region": "77"
-        })
+        response = await client.post(
+            "/api/v1/prospects/inbound",
+            json={
+                "source_type": "manual_entry",
+                "full_name": "Тестов Тест Тестович",
+                "phone": "+79991234567",
+                "debt_amount": 800000,
+                "region": "77",
+            },
+        )
         assert response.status_code in (200, 201)
         data = response.json()
         assert data["source_type"] == "manual_entry"
@@ -189,12 +188,15 @@ class TestProspectsAPI:
     @pytest.mark.asyncio
     async def test_convert_prospect_to_lead(self, client):
         # 1. Создать prospect
-        create_resp = await client.post("/api/v1/prospects/inbound", json={
-            "source_type": "website_form",
-            "full_name": "Конвертов К.К.",
-            "phone": "+79997654321",
-            "debt_amount": 1000000
-        })
+        create_resp = await client.post(
+            "/api/v1/prospects/inbound",
+            json={
+                "source_type": "website_form",
+                "full_name": "Конвертов К.К.",
+                "phone": "+79997654321",
+                "debt_amount": 1000000,
+            },
+        )
         assert create_resp.status_code in (200, 201)
         prospect_id = create_resp.json()["id"]
         # 2. Конвертировать
@@ -208,15 +210,13 @@ class TestProspectsAPI:
 
     @pytest.mark.asyncio
     async def test_reject_prospect(self, client):
-        create_resp = await client.post("/api/v1/prospects/inbound", json={
-            "source_type": "manual_entry",
-            "full_name": "Отказов О.О.",
-            "phone": "+79990000000"
-        })
+        create_resp = await client.post(
+            "/api/v1/prospects/inbound",
+            json={"source_type": "manual_entry", "full_name": "Отказов О.О.", "phone": "+79990000000"},
+        )
         prospect_id = create_resp.json()["id"]
         reject_resp = await client.post(
-            f"/api/v1/prospects/{prospect_id}/reject",
-            params={"reason": "Не подходит по сумме долга"}
+            f"/api/v1/prospects/{prospect_id}/reject", params={"reason": "Не подходит по сумме долга"}
         )
         assert reject_resp.status_code == 200
         data = reject_resp.json()
@@ -228,16 +228,17 @@ class TestProspectsAPI:
         # Создать 3 prospect'а, конвертировать массово
         ids = []
         for i in range(3):
-            resp = await client.post("/api/v1/prospects/inbound", json={
-                "source_type": "website_form",
-                "full_name": f"Массовый {i}",
-                "phone": f"+7999000000{i}",
-                "debt_amount": 600000
-            })
+            resp = await client.post(
+                "/api/v1/prospects/inbound",
+                json={
+                    "source_type": "website_form",
+                    "full_name": f"Массовый {i}",
+                    "phone": f"+7999000000{i}",
+                    "debt_amount": 600000,
+                },
+            )
             ids.append(resp.json()["id"])
-        bulk_resp = await client.post("/api/v1/prospects/bulk-convert", json={
-            "prospect_ids": ids
-        })
+        bulk_resp = await client.post("/api/v1/prospects/bulk-convert", json={"prospect_ids": ids})
         assert bulk_resp.status_code == 200
         data = bulk_resp.json()
         assert data["converted"] >= 0
@@ -267,14 +268,17 @@ class TestProspectsAPI:
     @pytest.mark.asyncio
     async def test_filter_by_temperature(self, client):
         # Создать hot prospect
-        await client.post("/api/v1/prospects/inbound", json={
-            "source_type": "website_form",
-            "full_name": "Горячий Г.Г.",
-            "phone": "+79991111111",
-            "debt_amount": 3000000,
-            "region": "77",
-            "creditor_count": 5
-        })
+        await client.post(
+            "/api/v1/prospects/inbound",
+            json={
+                "source_type": "website_form",
+                "full_name": "Горячий Г.Г.",
+                "phone": "+79991111111",
+                "debt_amount": 3000000,
+                "region": "77",
+                "creditor_count": 5,
+            },
+        )
         response = await client.get("/api/v1/prospects/?temperature=hot")
         assert response.status_code == 200
         data = response.json()
@@ -282,11 +286,10 @@ class TestProspectsAPI:
 
     @pytest.mark.asyncio
     async def test_search_by_name(self, client):
-        await client.post("/api/v1/prospects/inbound", json={
-            "source_type": "manual_entry",
-            "full_name": "Уникальнов Уникал Уникалович",
-            "phone": "+79992222222"
-        })
+        await client.post(
+            "/api/v1/prospects/inbound",
+            json={"source_type": "manual_entry", "full_name": "Уникальнов Уникал Уникалович", "phone": "+79992222222"},
+        )
         response = await client.get("/api/v1/prospects/?search=Уникальнов")
         assert response.status_code == 200
         data = response.json()
@@ -295,6 +298,7 @@ class TestProspectsAPI:
 
 # === Тесты конвертера ===
 
+
 class TestConverter:
     """Тесты конвертации prospect → lead."""
 
@@ -302,7 +306,7 @@ class TestConverter:
     async def test_convert_requires_contact(self, db_session):
         """Prospect без телефона и email не конвертируется."""
         from app.services.prospecting.converter import ProspectToLeadConverter
-        from app.models.prospect import Prospect
+
         converter = ProspectToLeadConverter()
         # Создать prospect без контакта
         prospect = Prospect(
@@ -323,7 +327,7 @@ class TestConverter:
     async def test_double_convert_fails(self, db_session):
         """Нельзя конвертировать дважды."""
         from app.services.prospecting.converter import ProspectToLeadConverter
-        from app.models.prospect import Prospect
+
         converter = ProspectToLeadConverter()
         prospect = Prospect(
             source_category="manual",

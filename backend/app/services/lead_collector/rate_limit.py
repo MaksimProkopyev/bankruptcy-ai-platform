@@ -1,9 +1,9 @@
 """Redis-backed throttling for external collector requests."""
 
-from datetime import datetime, timezone
 import asyncio
 import logging
 import math
+from datetime import datetime, timezone
 
 import redis.asyncio as redis
 

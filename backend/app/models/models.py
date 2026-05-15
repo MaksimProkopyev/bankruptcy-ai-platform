@@ -1,14 +1,22 @@
 """SQLAlchemy ORM models."""
 
 import enum
-from datetime import datetime, date
 from uuid import uuid4
 
 from sqlalchemy import (
-    Column, String, Boolean, Integer, Text, Date, DateTime,
-    ForeignKey, Numeric, Enum, ARRAY, JSON, Index
+    ARRAY,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB, INET
+from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.sql import func
 
@@ -18,6 +26,7 @@ class Base(DeclarativeBase):
 
 
 # ---- Enums ----
+
 
 class UserRole(str, enum.Enum):
     admin = "admin"
@@ -91,6 +100,7 @@ class DocumentStatus(str, enum.Enum):
 
 
 # ---- Models ----
+
 
 class User(Base):
     __tablename__ = "users"

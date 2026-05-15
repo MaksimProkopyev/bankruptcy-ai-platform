@@ -4,6 +4,7 @@ import random
 from typing import List
 
 from app.schemas.prospect import RawProspect
+
 from .base import BaseParser
 
 

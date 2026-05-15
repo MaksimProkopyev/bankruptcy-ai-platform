@@ -18,8 +18,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.models import Client, CaseEvent, Notification
 from app.models.billing_models import DocumentDraft, ESignature
+from app.models.models import CaseEvent, Client, Notification
 
 
 class ESignService:
@@ -56,9 +56,7 @@ class ESignService:
             case_id=draft.case_id,
             document_draft_id=draft_id,
             document_title=draft.title,
-            document_hash=draft.file_hash or hashlib.sha256(
-                draft.content_html.encode()
-            ).hexdigest(),
+            document_hash=draft.file_hash or hashlib.sha256(draft.content_html.encode()).hexdigest(),
             method="sms",
             phone=client.phone,
             signing_code=code,
@@ -78,13 +76,15 @@ class ESignService:
         )
 
         # Create notification for client
-        self.db.add(Notification(
-            client_id=client_id,
-            case_id=draft.case_id,
-            title=f"Документ на подпись: {draft.title}",
-            body="Введите код из SMS для подписания документа.",
-            channel="in_app",
-        ))
+        self.db.add(
+            Notification(
+                client_id=client_id,
+                case_id=draft.case_id,
+                title=f"Документ на подпись: {draft.title}",
+                body="Введите код из SMS для подписания документа.",
+                channel="in_app",
+            )
+        )
 
         return sig
 
@@ -134,29 +134,29 @@ class ESignService:
 
         # Log event
         if sig.case_id:
-            self.db.add(CaseEvent(
-                case_id=sig.case_id,
-                event_type="document_signed",
-                title=f"Документ подписан: {sig.document_title}",
-                description=f"Подписант: {sig.signer_full_name}, метод: SMS",
-                is_visible_to_client=True,
-                is_system_event=True,
-                event_metadata={
-                    "signature_id": str(sig.id),
-                    "document_hash": sig.document_hash,
-                    "method": "sms",
-                    "ip": ip_address,
-                },
-            ))
+            self.db.add(
+                CaseEvent(
+                    case_id=sig.case_id,
+                    event_type="document_signed",
+                    title=f"Документ подписан: {sig.document_title}",
+                    description=f"Подписант: {sig.signer_full_name}, метод: SMS",
+                    is_visible_to_client=True,
+                    is_system_event=True,
+                    event_metadata={
+                        "signature_id": str(sig.id),
+                        "document_hash": sig.document_hash,
+                        "method": "sms",
+                        "ip": ip_address,
+                    },
+                )
+            )
 
         return sig
 
     async def get_audit_trail(self, case_id: UUID) -> list[dict]:
         """Get all signatures for a case — audit trail."""
         result = await self.db.execute(
-            select(ESignature)
-            .where(ESignature.case_id == case_id)
-            .order_by(ESignature.created_at.desc())
+            select(ESignature).where(ESignature.case_id == case_id).order_by(ESignature.created_at.desc())
         )
         sigs = result.scalars().all()
         return [

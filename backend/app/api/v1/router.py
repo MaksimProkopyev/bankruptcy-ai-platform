@@ -1,10 +1,23 @@
 """API v1 router — all endpoints."""
 
 from fastapi import APIRouter
+
 from app.api.v1 import (
-    auth, users, clients, cases, documents, ai, analytics,
-    notifications, client_auth, client_cabinet, anticollector, billing, lead_sources, prospects,
+    ai,
+    analytics,
+    anticollector,
+    auth,
+    billing,
+    cases,
+    client_auth,
+    client_cabinet,
+    clients,
+    documents,
+    lead_sources,
+    notifications,
+    prospects,
     staff,
+    users,
 )
 
 api_router = APIRouter()

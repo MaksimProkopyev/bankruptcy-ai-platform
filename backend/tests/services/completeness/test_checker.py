@@ -1,17 +1,16 @@
 """Integration tests for CompletenessChecker."""
+
 from __future__ import annotations
 
-import uuid
 import pytest
-import pytest_asyncio
+
+from app.models.case_checklist_item import ChecklistItemStatus, MatchMethod
 from app.services.completeness.checker import CompletenessChecker
 from app.services.completeness.schemas import CompletenessItemUpdateRequest
-from app.models.case_checklist_item import ChecklistItemStatus, MatchMethod
 
 
 @pytest.mark.asyncio
 class TestCompletenessChecker:
-
     # --- init_checklist ---
 
     async def test_init_checklist_individual_extrajudicial(self, db_session, test_case):
@@ -19,10 +18,10 @@ class TestCompletenessChecker:
         # Убедимся, что procedure_type = extrajudicial для теста
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         progress = await checker.init_checklist(test_case.id)
-        
+
         assert progress.case_id == test_case.id
         assert progress.checklist_id == "individual_extrajudicial"
         assert progress.total_items > 0
@@ -35,7 +34,7 @@ class TestCompletenessChecker:
         """Без явного checklist_id — определяет по case.procedure_type."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         progress = await checker.init_checklist(test_case.id)
         assert progress.checklist_id == "individual_extrajudicial"
@@ -44,7 +43,7 @@ class TestCompletenessChecker:
         """Инициализация для судебной процедуры."""
         test_case.procedure_type = "asset_realization"  # судебная процедура
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         progress = await checker.init_checklist(test_case.id)
         assert progress.checklist_id == "individual_judicial"
@@ -54,7 +53,7 @@ class TestCompletenessChecker:
         """Повторный вызов не дублирует items."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         p1 = await checker.init_checklist(test_case.id)
         p2 = await checker.init_checklist(test_case.id)
@@ -72,11 +71,11 @@ class TestCompletenessChecker:
         """После init — все items missing, 0% прогресса."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         await checker.init_checklist(test_case.id)
         progress = await checker.get_progress(test_case.id)
-        
+
         assert progress.progress_percent == 0.0
         assert progress.is_complete is False
         assert len(progress.missing_required) > 0
@@ -85,11 +84,11 @@ class TestCompletenessChecker:
         """Прогресс содержит все категории."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         await checker.init_checklist(test_case.id)
         progress = await checker.get_progress(test_case.id)
-        
+
         category_names = {c.category for c in progress.categories}
         assert "personal_identity" in category_names
         assert "debt_info" in category_names
@@ -100,11 +99,11 @@ class TestCompletenessChecker:
         """Переход missing → uploaded с привязкой документа."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         await checker.init_checklist(test_case.id)
         progress = await checker.get_progress(test_case.id)
-        
+
         # Найти item passport_main
         passport_item = None
         for cat in progress.categories:
@@ -114,15 +113,15 @@ class TestCompletenessChecker:
                     break
             if passport_item:
                 break
-        
+
         assert passport_item is not None
-        
+
         update = CompletenessItemUpdateRequest(
             status=ChecklistItemStatus.UPLOADED,
             document_id=test_documents[0].id,  # passport_scan.pdf
         )
         result = await checker.update_item(test_case.id, passport_item.id, update)
-        
+
         assert result.status == ChecklistItemStatus.UPLOADED
         assert result.document_id == test_documents[0].id
 
@@ -130,25 +129,32 @@ class TestCompletenessChecker:
         """Переход uploaded → review → approved."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         await checker.init_checklist(test_case.id)
         progress = await checker.get_progress(test_case.id)
-        
+
         # Найти item
         item = progress.categories[0].items[0]
-        
+
         # missing → uploaded
-        await checker.update_item(test_case.id, item.id,
-            CompletenessItemUpdateRequest(status=ChecklistItemStatus.UPLOADED, document_id=test_documents[0].id))
+        await checker.update_item(
+            test_case.id,
+            item.id,
+            CompletenessItemUpdateRequest(status=ChecklistItemStatus.UPLOADED, document_id=test_documents[0].id),
+        )
         # uploaded → review
-        await checker.update_item(test_case.id, item.id,
-            CompletenessItemUpdateRequest(status=ChecklistItemStatus.REVIEW))
+        await checker.update_item(
+            test_case.id, item.id, CompletenessItemUpdateRequest(status=ChecklistItemStatus.REVIEW)
+        )
         # review → approved
-        result = await checker.update_item(test_case.id, item.id,
+        result = await checker.update_item(
+            test_case.id,
+            item.id,
             CompletenessItemUpdateRequest(status=ChecklistItemStatus.APPROVED),
-            reviewer_id=test_lawyer.id)
-        
+            reviewer_id=test_lawyer.id,
+        )
+
         assert result.status == ChecklistItemStatus.APPROVED
         assert result.reviewer_id == test_lawyer.id
 
@@ -156,52 +162,60 @@ class TestCompletenessChecker:
         """Отклонение без причины → ValidationError."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         await checker.init_checklist(test_case.id)
         progress = await checker.get_progress(test_case.id)
-        
+
         item = progress.categories[0].items[0]
-        
+
         # Сначала uploaded
-        await checker.update_item(test_case.id, item.id,
-            CompletenessItemUpdateRequest(status=ChecklistItemStatus.UPLOADED, document_id=test_documents[0].id))
-        
+        await checker.update_item(
+            test_case.id,
+            item.id,
+            CompletenessItemUpdateRequest(status=ChecklistItemStatus.UPLOADED, document_id=test_documents[0].id),
+        )
+
         # Затем reject без причины - должно вызывать ошибку
         with pytest.raises(ValueError):
-            await checker.update_item(test_case.id, item.id,
-                CompletenessItemUpdateRequest(status=ChecklistItemStatus.REJECTED))
+            await checker.update_item(
+                test_case.id, item.id, CompletenessItemUpdateRequest(status=ChecklistItemStatus.REJECTED)
+            )
 
     async def test_update_item_invalid_transition(self, db_session, test_case):
         """Недопустимый переход статуса → ValueError."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         await checker.init_checklist(test_case.id)
         progress = await checker.get_progress(test_case.id)
-        
+
         item = progress.categories[0].items[0]
-        
+
         # missing → approved (нельзя, нужен uploaded → review → approved)
         with pytest.raises(ValueError):
-            await checker.update_item(test_case.id, item.id,
-                CompletenessItemUpdateRequest(status=ChecklistItemStatus.APPROVED))
+            await checker.update_item(
+                test_case.id, item.id, CompletenessItemUpdateRequest(status=ChecklistItemStatus.APPROVED)
+            )
 
     async def test_update_item_waive(self, db_session, test_case, test_lawyer):
         """Waive доступен из любого статуса (кроме approved)."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         await checker.init_checklist(test_case.id)
         progress = await checker.get_progress(test_case.id)
-        
+
         item = progress.categories[0].items[0]
-        result = await checker.update_item(test_case.id, item.id,
+        result = await checker.update_item(
+            test_case.id,
+            item.id,
             CompletenessItemUpdateRequest(status=ChecklistItemStatus.WAIVED),
-            reviewer_id=test_lawyer.id)
-        
+            reviewer_id=test_lawyer.id,
+        )
+
         assert result.status == ChecklistItemStatus.WAIVED
 
     # --- auto_match ---
@@ -210,12 +224,12 @@ class TestCompletenessChecker:
         """Auto-match находит документ по document_type."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         await checker.init_checklist(test_case.id)
-        
+
         result = await checker.auto_match(test_case.id)
-        
+
         assert result.matched >= 1
         # passport_scan.pdf с document_type="passport" → должен привязаться
         passport_matches = [d for d in result.details if d.checklist_item_id == "passport_main"]
@@ -226,12 +240,12 @@ class TestCompletenessChecker:
         """Auto-match находит документ по fuzzy filename match."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         await checker.init_checklist(test_case.id)
-        
+
         result = await checker.auto_match(test_case.id)
-        
+
         # "снилс_иванов.jpg" → fuzzy match → snils
         snils_matches = [d for d in result.details if d.checklist_item_id == "snils"]
         # Может быть 0 или 1 в зависимости от точности fuzzy match
@@ -242,15 +256,14 @@ class TestCompletenessChecker:
         """Auto-match обновляет статус items на uploaded."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         await checker.init_checklist(test_case.id)
         await checker.auto_match(test_case.id)
-        
+
         progress = await checker.get_progress(test_case.id)
         uploaded_items = [
-            item for cat in progress.categories for item in cat.items
-            if item.status == ChecklistItemStatus.UPLOADED
+            item for cat in progress.categories for item in cat.items if item.status == ChecklistItemStatus.UPLOADED
         ]
         assert len(uploaded_items) >= 1
 
@@ -260,7 +273,7 @@ class TestCompletenessChecker:
         """is_complete = False когда есть missing required items."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         await checker.init_checklist(test_case.id)
         progress = await checker.get_progress(test_case.id)
@@ -272,10 +285,10 @@ class TestCompletenessChecker:
         """Export возвращает dict с нужной структурой."""
         test_case.procedure_type = "extrajudicial"
         await db_session.commit()
-        
+
         checker = CompletenessChecker(db_session)
         await checker.init_checklist(test_case.id)
-        
+
         export = await checker.export_checklist(test_case.id)
         assert "case_id" in export
         assert "progress" in export

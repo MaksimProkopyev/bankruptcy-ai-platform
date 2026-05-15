@@ -1,8 +1,9 @@
 """Prospect deduplication service."""
 
 from typing import Optional
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
 
 from app.models.prospect import Prospect
 from app.schemas.prospect import RawProspect

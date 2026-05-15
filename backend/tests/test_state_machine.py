@@ -1,11 +1,10 @@
 """Tests for case status state machine."""
 
-import pytest
 from app.models.models import CaseStatus
 from app.services.case_machine import (
-    is_valid_transition,
     get_available_transitions,
     get_status_group,
+    is_valid_transition,
 )
 
 
@@ -42,8 +41,9 @@ class TestCaseStateMachine:
         ]
 
         for i in range(len(path) - 1):
-            assert is_valid_transition(path[i], path[i + 1]), \
-                f"Transition {path[i].value} → {path[i+1].value} should be valid"
+            assert is_valid_transition(path[i], path[i + 1]), (
+                f"Transition {path[i].value} → {path[i + 1].value} should be valid"
+            )
 
     def test_terminal_states_no_exit(self):
         """Terminal states have no outgoing transitions."""

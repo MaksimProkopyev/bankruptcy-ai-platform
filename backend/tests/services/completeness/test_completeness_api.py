@@ -1,14 +1,15 @@
 """API tests for completeness endpoints."""
+
 from __future__ import annotations
 
 import uuid
+
 import pytest
 from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
 class TestCompletenessAPI:
-
     # --- GET /completeness ---
 
     async def test_get_completeness_not_initialized(self, client: AsyncClient, auth_headers, test_case):
@@ -73,7 +74,7 @@ class TestCompletenessAPI:
         )
         categories = init_resp.json()["categories"]
         item_id = categories[0]["items"][0]["id"]
-        
+
         resp = await client.patch(
             f"/api/v1/cases/{test_case.id}/completeness/items/{item_id}",
             headers=auth_headers,
@@ -90,7 +91,7 @@ class TestCompletenessAPI:
             json={},
         )
         item_id = init_resp.json()["categories"][0]["items"][0]["id"]
-        
+
         resp = await client.patch(
             f"/api/v1/cases/{test_case.id}/completeness/items/{item_id}",
             headers=auth_headers,
@@ -107,7 +108,7 @@ class TestCompletenessAPI:
             json={},
         )
         item_id = init_resp.json()["categories"][0]["items"][0]["id"]
-        
+
         resp = await client.patch(
             f"/api/v1/cases/{test_case.id}/completeness/items/{item_id}",
             headers=client_auth_headers,
@@ -125,7 +126,7 @@ class TestCompletenessAPI:
             headers=auth_headers,
             json={},
         )
-        
+
         resp = await client.post(
             f"/api/v1/cases/{test_case.id}/completeness/auto-match",
             headers=auth_headers,
@@ -145,7 +146,7 @@ class TestCompletenessAPI:
             headers=auth_headers,
             json={},
         )
-        
+
         resp = await client.get(
             f"/api/v1/cases/{test_case.id}/completeness/export",
             headers=auth_headers,
@@ -181,7 +182,7 @@ class TestCompletenessAPI:
             headers=auth_headers,
             json={},
         )
-        
+
         resp = await client.post(
             f"/api/v1/cases/{test_case.id}/completeness/auto-match",
             headers=auth_headers,

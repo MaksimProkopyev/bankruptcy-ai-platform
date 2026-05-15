@@ -4,12 +4,7 @@ Manages the checklist of required documents for each bankruptcy case.
 Determines which documents are needed based on case type and client situation.
 """
 
-from uuid import UUID
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.models import DocumentType
-
 
 # Required documents for all bankruptcy cases
 BASE_DOCUMENTS = [
@@ -60,84 +55,98 @@ def get_required_documents(
     creditors_count: int = 0,
 ) -> list[dict]:
     """Get the full document checklist for a case.
-    
+
     Returns a list of dicts with: type, required, description, category.
     """
     checklist = []
 
     # Base documents
     for doc_type, required, desc in BASE_DOCUMENTS:
-        checklist.append({
-            "type": doc_type.value if isinstance(doc_type, DocumentType) else doc_type,
-            "required": required,
-            "description": desc,
-            "category": "personal",
-        })
-
-    # Conditional: marital status
-    if marital_status in ("married", "divorced"):
-        for doc_type, required, desc in CONDITIONAL_DOCUMENTS.get(marital_status, []):
-            checklist.append({
+        checklist.append(
+            {
                 "type": doc_type.value if isinstance(doc_type, DocumentType) else doc_type,
                 "required": required,
                 "description": desc,
                 "category": "personal",
-            })
+            }
+        )
+
+    # Conditional: marital status
+    if marital_status in ("married", "divorced"):
+        for doc_type, required, desc in CONDITIONAL_DOCUMENTS.get(marital_status, []):
+            checklist.append(
+                {
+                    "type": doc_type.value if isinstance(doc_type, DocumentType) else doc_type,
+                    "required": required,
+                    "description": desc,
+                    "category": "personal",
+                }
+            )
 
     # Conditional: property
     if has_property_types:
         if "apartment" in has_property_types or "house" in has_property_types:
             for doc_type, required, desc in CONDITIONAL_DOCUMENTS["has_property_apartment"]:
-                checklist.append({
-                    "type": doc_type.value if isinstance(doc_type, DocumentType) else doc_type,
-                    "required": required,
-                    "description": desc,
-                    "category": "property",
-                })
+                checklist.append(
+                    {
+                        "type": doc_type.value if isinstance(doc_type, DocumentType) else doc_type,
+                        "required": required,
+                        "description": desc,
+                        "category": "property",
+                    }
+                )
         if "car" in has_property_types:
             for doc_type, required, desc in CONDITIONAL_DOCUMENTS["has_property_car"]:
-                checklist.append({
-                    "type": doc_type.value if isinstance(doc_type, DocumentType) else doc_type,
-                    "required": required,
-                    "description": desc,
-                    "category": "property",
-                })
+                checklist.append(
+                    {
+                        "type": doc_type.value if isinstance(doc_type, DocumentType) else doc_type,
+                        "required": required,
+                        "description": desc,
+                        "category": "property",
+                    }
+                )
 
     # Conditional: employment
     if is_employed is False:
         for doc_type, required, desc in CONDITIONAL_DOCUMENTS.get("unemployed", []):
-            checklist.append({
-                "type": doc_type if isinstance(doc_type, str) else doc_type.value,
-                "required": required,
-                "description": desc,
-                "category": "employment",
-            })
+            checklist.append(
+                {
+                    "type": doc_type if isinstance(doc_type, str) else doc_type.value,
+                    "required": required,
+                    "description": desc,
+                    "category": "employment",
+                }
+            )
 
     # Credits
     if creditors_count > 0:
         for doc_type, required, desc in CONDITIONAL_DOCUMENTS.get("has_credits", []):
-            checklist.append({
-                "type": doc_type.value if isinstance(doc_type, DocumentType) else doc_type,
-                "required": required,
-                "description": desc,
-                "category": "financial",
-            })
+            checklist.append(
+                {
+                    "type": doc_type.value if isinstance(doc_type, DocumentType) else doc_type,
+                    "required": required,
+                    "description": desc,
+                    "category": "financial",
+                }
+            )
 
     # Process documents
     for doc_type, required, desc in PROCESS_DOCUMENTS:
-        checklist.append({
-            "type": doc_type.value if isinstance(doc_type, DocumentType) else doc_type,
-            "required": required,
-            "description": desc,
-            "category": "process",
-        })
+        checklist.append(
+            {
+                "type": doc_type.value if isinstance(doc_type, DocumentType) else doc_type,
+                "required": required,
+                "description": desc,
+                "category": "process",
+            }
+        )
 
     return checklist
 
 
 def calculate_completeness(checklist: list[dict], collected_types: set[str]) -> dict:
     """Calculate document collection progress.
-    
+
     Returns: {total, collected, missing, required_missing, progress_percent}
     """
     required = [d for d in checklist if d["required"]]

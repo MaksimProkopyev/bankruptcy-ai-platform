@@ -1,8 +1,8 @@
 """Base collector workflow: fetch -> filter -> deduplicate -> save."""
 
-from abc import ABC, abstractmethod
 import asyncio
 import time
+from abc import ABC, abstractmethod
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession

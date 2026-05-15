@@ -2,18 +2,19 @@
 
 import argparse
 import asyncio
-from datetime import datetime, timedelta, timezone
 import logging
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.lead_models import Lead
 from app.services.lead_collector.outreach import OutreachResult, OutreachSender
-from app.core.config import settings
 from config.collectors import GOV_SOURCES, OUTREACH_MAX_ATTEMPTS, OUTREACH_TEMPLATE, OUTREACH_WAIT_DAYS
 
 logger = logging.getLogger("lead_outreach")
+
 
 def _append_outreach_history(lead: Lead, result: OutreachResult) -> None:
     card = dict(lead.briefing_card or {})

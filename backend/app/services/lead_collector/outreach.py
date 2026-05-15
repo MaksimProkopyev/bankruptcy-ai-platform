@@ -1,7 +1,7 @@
 """Outreach delivery service for gov-source leads."""
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 
 import httpx
 
@@ -57,12 +57,18 @@ class OutreachSender:
             "text": message,
             "sender": settings.SMS_SENDER,
         }
-        headers = {"Authorization": f"Bearer {settings.LEAD_OUTREACH_SMS_API_KEY}"} if settings.LEAD_OUTREACH_SMS_API_KEY else {}
+        headers = (
+            {"Authorization": f"Bearer {settings.LEAD_OUTREACH_SMS_API_KEY}"}
+            if settings.LEAD_OUTREACH_SMS_API_KEY
+            else {}
+        )
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(settings.LEAD_OUTREACH_SMS_API_URL, json=payload, headers=headers)
                 response.raise_for_status()
-                data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+                data = (
+                    response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+                )
                 message_id = str(data.get("message_id") or data.get("id") or "")
                 return OutreachResult(channel="sms", success=True, provider_message_id=message_id or None)
         except Exception as exc:  # noqa: BLE001
@@ -82,12 +88,18 @@ class OutreachSender:
             "text": message,
             "from": settings.LEAD_OUTREACH_FROM_EMAIL,
         }
-        headers = {"Authorization": f"Bearer {settings.LEAD_OUTREACH_EMAIL_API_KEY}"} if settings.LEAD_OUTREACH_EMAIL_API_KEY else {}
+        headers = (
+            {"Authorization": f"Bearer {settings.LEAD_OUTREACH_EMAIL_API_KEY}"}
+            if settings.LEAD_OUTREACH_EMAIL_API_KEY
+            else {}
+        )
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(settings.LEAD_OUTREACH_EMAIL_API_URL, json=payload, headers=headers)
                 response.raise_for_status()
-                data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+                data = (
+                    response.json() if response.headers.get("content-type", "").startswith("application/json") else {}
+                )
                 message_id = str(data.get("message_id") or data.get("id") or "")
                 return OutreachResult(channel="email", success=True, provider_message_id=message_id or None)
         except Exception as exc:  # noqa: BLE001
@@ -113,7 +125,8 @@ class OutreachSender:
                 response.raise_for_status()
                 data = response.json()
                 message_id = data.get("result", {}).get("message_id")
-                return OutreachResult(channel="telegram", success=True, provider_message_id=str(message_id) if message_id else None)
+                return OutreachResult(
+                    channel="telegram", success=True, provider_message_id=str(message_id) if message_id else None
+                )
         except Exception as exc:  # noqa: BLE001
             return OutreachResult(channel="telegram", success=False, error=str(exc))
-

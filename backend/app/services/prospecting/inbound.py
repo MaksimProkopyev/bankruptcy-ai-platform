@@ -1,15 +1,13 @@
 """Inbound prospect handler."""
 
-from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.prospect import Prospect, ProspectSourceConfig
-from app.schemas.prospect import RawProspect, InboundProspectRequest
-from .scorer import ProspectScorer
+from app.schemas.prospect import RawProspect
+
 from .dedup import DeduplicationService
-import uuid
-from datetime import datetime
+from .scorer import ProspectScorer
 
 
 class InboundProspectHandler:

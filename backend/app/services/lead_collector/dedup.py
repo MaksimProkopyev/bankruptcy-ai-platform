@@ -1,7 +1,7 @@
 """Lead deduplication logic across government sources."""
 
-from difflib import SequenceMatcher
 import re
+from difflib import SequenceMatcher
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,11 +39,7 @@ class LeadDeduplicator:
     ) -> Lead | None:
         if not external_id:
             return None
-        result = await db.execute(
-            select(Lead)
-            .where(Lead.source == source, Lead.external_id == external_id)
-            .limit(1)
-        )
+        result = await db.execute(select(Lead).where(Lead.source == source, Lead.external_id == external_id).limit(1))
         return result.scalar_one_or_none()
 
     async def find_primary_duplicate(self, db: AsyncSession, lead: RawLead) -> Lead | None:
@@ -97,4 +93,3 @@ class LeadDeduplicator:
         if lead.email:
             contact_rank -= 1
         return source_rank, contact_rank
-

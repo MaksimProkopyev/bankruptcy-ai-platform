@@ -1,12 +1,12 @@
 """Prospect parsers for automated sources."""
 
 from .base import BaseParser, ParserConfig
-from .fssp import FSSPParser
 from .efrsb import EFRSBParser
-from .kad_arbitr import KADArbitrParser
 from .fns import FNSParser
-from .rosreestr import RosreestrParser
+from .fssp import FSSPParser
+from .kad_arbitr import KADArbitrParser
 from .mfc import MFCParser
+from .rosreestr import RosreestrParser
 
 __all__ = [
     "BaseParser",

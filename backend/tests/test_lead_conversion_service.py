@@ -73,4 +73,3 @@ async def test_converter_reuses_existing_client_by_phone(db_session: AsyncSessio
     query = await db_session.execute(select(Client).where(Client.phone == "+79007654321"))
     clients = query.scalars().all()
     assert len(clients) == 1
-

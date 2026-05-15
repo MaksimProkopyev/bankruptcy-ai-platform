@@ -1,14 +1,15 @@
 """Users API — staff management."""
 
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
-from app.models.models import User, Case
-from app.schemas.schemas import UserResponse
 from app.core.permissions import require_permission
+from app.db.session import get_db
+from app.models.models import Case, User
+from app.schemas.schemas import UserResponse
 
 router = APIRouter()
 
@@ -44,8 +45,11 @@ async def list_lawyers_with_load(
             User.max_cases,
             func.count(Case.id).label("active_cases"),
         )
-        .outerjoin(Case, (Case.assigned_lawyer_id == User.id) & (Case.status.notin_(["rejected", "cancelled", "debt_discharged"])))
-        .where(User.role == "lawyer", User.is_active == True)
+        .outerjoin(
+            Case,
+            (Case.assigned_lawyer_id == User.id) & (Case.status.notin_(["rejected", "cancelled", "debt_discharged"])),
+        )
+        .where(User.role == "lawyer", User.is_active)
         .group_by(User.id)
     )
     result = await db.execute(query)

@@ -1,25 +1,31 @@
 """Cases API — CRUD + business logic for bankruptcy cases."""
 
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.session import get_db
-from app.models.models import Case, CaseEvent, Client, Creditor, Deadline, CaseStatus
-from app.schemas.schemas import (
-    CaseCreate, CaseUpdate, CaseResponse, CaseDetailResponse,
-    CreditorCreate, CreditorResponse, DeadlineCreate, DeadlineResponse,
-)
-from app.services.case_machine import is_valid_transition, get_available_transitions
 from app.core.permissions import require_permission
+from app.db.session import get_db
+from app.models.models import Case, CaseEvent, CaseStatus, Client, Creditor, Deadline
+from app.schemas.schemas import (
+    CaseCreate,
+    CaseDetailResponse,
+    CaseResponse,
+    CaseUpdate,
+    CreditorCreate,
+    CreditorResponse,
+    DeadlineCreate,
+    DeadlineResponse,
+)
+from app.services.case_machine import get_available_transitions, is_valid_transition
 
 router = APIRouter()
 
 
-@router.get("/", response_model=list[CaseResponse],
-            dependencies=[Depends(require_permission("cases", "read"))])
+@router.get("/", response_model=list[CaseResponse], dependencies=[Depends(require_permission("cases", "read"))])
 async def list_cases(
     status: str | None = None,
     assigned_lawyer_id: UUID | None = None,
@@ -40,23 +46,20 @@ async def list_cases(
     return result.scalars().all()
 
 
-@router.get("/stats",
-            dependencies=[Depends(require_permission("cases", "read"))])
+@router.get("/stats", dependencies=[Depends(require_permission("cases", "read"))])
 async def get_case_stats(db: AsyncSession = Depends(get_db)):
     """Quick stats for dashboard."""
     total = await db.execute(select(func.count(Case.id)))
-    by_status = await db.execute(
-        select(Case.status, func.count(Case.id))
-        .group_by(Case.status)
-    )
+    by_status = await db.execute(select(Case.status, func.count(Case.id)).group_by(Case.status))
     return {
         "total": total.scalar_one(),
         "by_status": {row[0]: row[1] for row in by_status.all()},
     }
 
 
-@router.get("/{case_id}", response_model=CaseDetailResponse,
-            dependencies=[Depends(require_permission("cases", "read"))])
+@router.get(
+    "/{case_id}", response_model=CaseDetailResponse, dependencies=[Depends(require_permission("cases", "read"))]
+)
 async def get_case(case_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get case with all related data."""
     query = (
@@ -77,8 +80,7 @@ async def get_case(case_id: UUID, db: AsyncSession = Depends(get_db)):
     return case
 
 
-@router.get("/{case_id}/transitions",
-            dependencies=[Depends(require_permission("cases", "read"))])
+@router.get("/{case_id}/transitions", dependencies=[Depends(require_permission("cases", "read"))])
 async def get_transitions(case_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get available status transitions for a case."""
     case = await db.get(Case, case_id)
@@ -92,8 +94,9 @@ async def get_transitions(case_id: UUID, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.post("/", response_model=CaseResponse, status_code=201,
-             dependencies=[Depends(require_permission("cases", "write"))])
+@router.post(
+    "/", response_model=CaseResponse, status_code=201, dependencies=[Depends(require_permission("cases", "write"))]
+)
 async def create_case(data: CaseCreate, db: AsyncSession = Depends(get_db)):
     """Create a new case."""
     client = await db.get(Client, data.client_id)
@@ -119,11 +122,8 @@ async def create_case(data: CaseCreate, db: AsyncSession = Depends(get_db)):
     return case
 
 
-@router.patch("/{case_id}", response_model=CaseResponse,
-              dependencies=[Depends(require_permission("cases", "write"))])
-async def update_case(
-    case_id: UUID, data: CaseUpdate, db: AsyncSession = Depends(get_db)
-):
+@router.patch("/{case_id}", response_model=CaseResponse, dependencies=[Depends(require_permission("cases", "write"))])
+async def update_case(case_id: UUID, data: CaseUpdate, db: AsyncSession = Depends(get_db)):
     """Update case. Status transitions are validated against the state machine."""
     case = await db.get(Case, case_id)
     if not case:
@@ -170,8 +170,7 @@ async def update_case(
     return case
 
 
-@router.get("/{case_id}/timeline",
-            dependencies=[Depends(require_permission("cases", "read"))])
+@router.get("/{case_id}/timeline", dependencies=[Depends(require_permission("cases", "read"))])
 async def get_case_timeline(
     case_id: UUID,
     page: int = Query(1, ge=1),
@@ -190,11 +189,13 @@ async def get_case_timeline(
     return result.scalars().all()
 
 
-@router.post("/{case_id}/creditors", response_model=CreditorResponse, status_code=201,
-             dependencies=[Depends(require_permission("cases", "write"))])
-async def add_creditor(
-    case_id: UUID, data: CreditorCreate, db: AsyncSession = Depends(get_db)
-):
+@router.post(
+    "/{case_id}/creditors",
+    response_model=CreditorResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("cases", "write"))],
+)
+async def add_creditor(case_id: UUID, data: CreditorCreate, db: AsyncSession = Depends(get_db)):
     """Add a creditor to a case. Auto-recalculates total debt."""
     case = await db.get(Case, case_id)
     if not case:
@@ -205,9 +206,7 @@ async def add_creditor(
 
     # Recalculate total debt
     await db.flush()
-    total = await db.execute(
-        select(func.sum(Creditor.total_amount)).where(Creditor.case_id == case_id)
-    )
+    total = await db.execute(select(func.sum(Creditor.total_amount)).where(Creditor.case_id == case_id))
     case.total_debt = total.scalar_one_or_none() or 0
 
     # Log event
@@ -225,11 +224,13 @@ async def add_creditor(
     return creditor
 
 
-@router.post("/{case_id}/deadlines", response_model=DeadlineResponse, status_code=201,
-             dependencies=[Depends(require_permission("cases", "write"))])
-async def add_deadline(
-    case_id: UUID, data: DeadlineCreate, db: AsyncSession = Depends(get_db)
-):
+@router.post(
+    "/{case_id}/deadlines",
+    response_model=DeadlineResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("cases", "write"))],
+)
+async def add_deadline(case_id: UUID, data: DeadlineCreate, db: AsyncSession = Depends(get_db)):
     """Add a procedural deadline."""
     case = await db.get(Case, case_id)
     if not case:
@@ -242,11 +243,10 @@ async def add_deadline(
     return deadline
 
 
-@router.get("/{case_id}/checklist",
-            dependencies=[Depends(require_permission("cases", "read"))])
+@router.get("/{case_id}/checklist", dependencies=[Depends(require_permission("cases", "read"))])
 async def get_checklist(case_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get document checklist for a case with completeness progress."""
-    from app.services.document_checklist import get_required_documents, calculate_completeness
+    from app.services.document_checklist import calculate_completeness, get_required_documents
 
     query = (
         select(Case)
@@ -265,7 +265,11 @@ async def get_checklist(case_id: UUID, db: AsyncSession = Depends(get_db)):
         creditors_count=len(case.creditors),
     )
 
-    collected_types = {doc.document_type.value if hasattr(doc.document_type, 'value') else doc.document_type for doc in case.documents if doc.status not in ("pending", "rejected")}
+    collected_types = {
+        doc.document_type.value if hasattr(doc.document_type, "value") else doc.document_type
+        for doc in case.documents
+        if doc.status not in ("pending", "rejected")
+    }
     progress = calculate_completeness(checklist, collected_types)
 
     return {

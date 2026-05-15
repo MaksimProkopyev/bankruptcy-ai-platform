@@ -14,14 +14,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
-    from app.models.models import Case, Client, User
+    pass
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationService:
     """Basic notification service that creates notifications in DB.
-    
+
     Real delivery (email/telegram) is handled by a separate worker.
     """
 
@@ -40,7 +40,7 @@ class NotificationService:
         metadata: dict | None = None,
     ) -> None:
         """Create a notification in the database.
-        
+
         Args:
             user_id: Recipient user ID
             title: Notification title
@@ -51,7 +51,7 @@ class NotificationService:
             metadata: Additional JSON metadata
         """
         from app.models.models import Notification
-        
+
         notification = Notification(
             user_id=user_id,
             case_id=case_id,
@@ -61,14 +61,11 @@ class NotificationService:
             is_read=False,
             created_at=datetime.utcnow(),
         )
-        
+
         self._session.add(notification)
         await self._session.flush()
-        
-        logger.info(
-            "Notification created: %s for user %s (case %s)",
-            title, user_id, case_id
-        )
+
+        logger.info("Notification created: %s for user %s (case %s)", title, user_id, case_id)
 
 
 class CompletenessNotifier:
@@ -88,15 +85,15 @@ class CompletenessNotifier:
         required_items: int,
     ) -> None:
         """После инициализации чеклиста — отправить клиенту список нужных документов.
-        
+
         Шаблон сообщения:
         Title: "Начат сбор документов"
-        Message: 
+        Message:
         "Для вашего дела необходимо собрать {required_items} обязательных документов.
         Перейдите в личный кабинет, чтобы увидеть полный список и инструкции по получению каждого документа.
-        
+
         Мы поможем на каждом этапе! Если возникнут вопросы — напишите вашему юристу."
-        
+
         metadata: { "event": "checklist_initialized", "total_items": N, "required_items": N }
         """
         user_id = await self._get_client_user_id(case_id)
@@ -110,7 +107,7 @@ class CompletenessNotifier:
             "Перейдите в личный кабинет, чтобы увидеть полный список и инструкции по получению каждого документа.\n\n"
             "Мы поможем на каждом этапе! Если возникнут вопросы — напишите вашему юристу."
         )
-        
+
         metadata = {
             "event": "checklist_initialized",
             "checklist_name": checklist_name,
@@ -135,15 +132,15 @@ class CompletenessNotifier:
         rejection_reason: str,
     ) -> None:
         """Документ отклонён — уведомить клиента с причиной.
-        
+
         Title: "Документ требует замены"
         Message:
         "Документ «{document_name}» не принят.
-        
+
         Причина: {rejection_reason}
-        
+
         Пожалуйста, загрузите исправленный документ в личном кабинете."
-        
+
         metadata: { "event": "document_rejected", "document_name": "...", "reason": "..." }
         """
         user_id = await self._get_client_user_id(case_id)
@@ -157,7 +154,7 @@ class CompletenessNotifier:
             f"Причина: {rejection_reason}\n\n"
             "Пожалуйста, загрузите исправленный документ в личном кабинете."
         )
-        
+
         metadata = {
             "event": "document_rejected",
             "document_name": document_name,
@@ -179,12 +176,12 @@ class CompletenessNotifier:
         case_id: uuid.UUID,
     ) -> None:
         """Все обязательные документы приняты.
-        
+
         Title: "Все документы собраны! 🎉"
         Message:
         "Отличная новость! Все необходимые документы для вашего дела приняты.
         Ваш юрист приступит к подготовке заявления. Мы сообщим о следующих шагах."
-        
+
         metadata: { "event": "all_documents_approved" }
         """
         user_id = await self._get_client_user_id(case_id)
@@ -197,7 +194,7 @@ class CompletenessNotifier:
             "Отличная новость! Все необходимые документы для вашего дела приняты.\n"
             "Ваш юрист приступит к подготовке заявления. Мы сообщим о следующих шагах."
         )
-        
+
         metadata = {
             "event": "all_documents_approved",
         }
@@ -219,18 +216,18 @@ class CompletenessNotifier:
         days_since_init: int,
     ) -> None:
         """Напоминание о несобранных документах.
-        
+
         Title: "Напоминание: нужны документы ({len(missing_items)} шт.)"
         Message:
-        "С момента начала сбора прошло {days_since_init} дней. 
+        "С момента начала сбора прошло {days_since_init} дней.
         Осталось загрузить {len(missing_items)} документов:
-        
+
         • {item1}
         • {item2}
         • ...
-        
+
         Если нужна помощь с получением какого-либо документа — обратитесь к юристу."
-        
+
         metadata: { "event": "missing_reminder", "days_since_init": N, "missing_count": N, "missing_items": [...] }
         """
         user_id = await self._get_client_user_id(case_id)
@@ -246,7 +243,7 @@ class CompletenessNotifier:
             f"{items_list}\n\n"
             "Если нужна помощь с получением какого-либо документа — обратитесь к юристу."
         )
-        
+
         metadata = {
             "event": "missing_reminder",
             "days_since_init": days_since_init,
@@ -274,12 +271,12 @@ class CompletenessNotifier:
         client_name: str,
     ) -> None:
         """Клиент загрузил документ — уведомить юриста.
-        
+
         Title: "Новый документ от клиента"
         Message:
         "Клиент {client_name} загрузил документ «{document_name}» ({checklist_item_name}).
         Проверьте документ в CRM."
-        
+
         Получатель: assigned_lawyer_id из case, или все юристы (если не назначен).
         metadata: { "event": "document_uploaded", "document_name": "...", "client_name": "..." }
         """
@@ -293,7 +290,7 @@ class CompletenessNotifier:
             f"Клиент {client_name} загрузил документ «{document_name}» ({checklist_item_name}).\n"
             "Проверьте документ в CRM."
         )
-        
+
         metadata = {
             "event": "document_uploaded",
             "document_name": document_name,
@@ -317,12 +314,12 @@ class CompletenessNotifier:
         client_name: str,
     ) -> None:
         """Все документы собраны — уведомить юриста.
-        
+
         Title: "Комплект документов собран"
         Message:
         "Все обязательные документы по делу клиента {client_name} приняты.
         Можно приступать к подготовке заявления."
-        
+
         metadata: { "event": "all_approved_lawyer", "client_name": "..." }
         """
         lawyer_user_id = await self._get_lawyer_user_id(case_id)
@@ -335,7 +332,7 @@ class CompletenessNotifier:
             f"Все обязательные документы по делу клиента {client_name} приняты.\n"
             "Можно приступать к подготовке заявления."
         )
-        
+
         metadata = {
             "event": "all_approved_lawyer",
             "client_name": client_name,
@@ -356,14 +353,14 @@ class CompletenessNotifier:
     async def _get_client_user_id(self, case_id: uuid.UUID) -> uuid.UUID | None:
         """Получить user_id клиента по case_id."""
         from app.models.models import Case, Client, User
-        
+
         stmt = (
             select(User.id)
             .join(Client, Client.user_id == User.id)
             .join(Case, Case.client_id == Client.id)
             .where(Case.id == case_id)
         )
-        
+
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -372,7 +369,7 @@ class CompletenessNotifier:
         Если не назначен — вернуть None (уведомление не отправляется).
         """
         from app.models.models import Case
-        
+
         stmt = select(Case.assigned_lawyer_id).where(Case.id == case_id)
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
@@ -380,22 +377,22 @@ class CompletenessNotifier:
     async def _get_client_name(self, case_id: uuid.UUID) -> str:
         """Получить имя клиента для уведомления юристу."""
         from app.models.models import Case, Client
-        
+
         stmt = (
             select(Client.first_name, Client.last_name, Client.patronymic)
             .join(Case, Case.client_id == Client.id)
             .where(Case.id == case_id)
         )
-        
+
         result = await self._session.execute(stmt)
         row = result.first()
-        
+
         if not row:
             return "Клиент"
-        
+
         first_name, last_name, patronymic = row
         parts = [first_name, last_name]
         if patronymic:
             parts.append(patronymic)
-        
+
         return " ".join(parts)

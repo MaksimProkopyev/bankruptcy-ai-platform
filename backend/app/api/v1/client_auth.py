@@ -9,15 +9,14 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from jose import jwt
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from jose import jwt
-
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.models import Client
-from app.core.config import settings
 
 router = APIRouter()
 
@@ -59,7 +58,7 @@ def _create_client_token(client_id: UUID, phone: str) -> str:
 @router.post("/send-code")
 async def send_code(data: PhoneRequest, db: AsyncSession = Depends(get_db)):
     """Send SMS verification code to client's phone.
-    
+
     Checks that the phone exists in the system (registered client).
     """
     phone = data.phone.strip()

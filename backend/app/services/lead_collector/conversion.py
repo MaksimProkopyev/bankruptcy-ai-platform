@@ -136,4 +136,3 @@ class LeadConverter:
             if client:
                 return client
         return None
-

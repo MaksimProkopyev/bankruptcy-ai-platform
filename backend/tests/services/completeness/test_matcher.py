@@ -1,7 +1,9 @@
 """Unit tests for DocumentMatcher."""
+
 from __future__ import annotations
 
 import pytest
+
 from app.services.completeness.matcher import DocumentMatcher
 
 
@@ -132,10 +134,11 @@ class TestDocumentMatcher:
     def test_match_document_by_type(self):
         """Документ с document_type должен матчиться по типу."""
         from unittest.mock import Mock
+
         doc = Mock()
         doc.document_type = "passport"
         doc.file_name = "some_file.pdf"
-        
+
         result = self.matcher.match_document(doc, "individual_judicial")
         assert result is not None
         assert result.checklist_item_id == "passport_main"
@@ -144,10 +147,11 @@ class TestDocumentMatcher:
     def test_match_document_by_fuzzy(self):
         """Документ без типа, но с подходящим именем файла."""
         from unittest.mock import Mock
+
         doc = Mock()
         doc.document_type = None
         doc.file_name = "снилс_скан.jpg"
-        
+
         result = self.matcher.match_document(doc, "individual_judicial")
         assert result is not None
         assert result.checklist_item_id == "snils"
@@ -156,9 +160,10 @@ class TestDocumentMatcher:
     def test_match_document_no_match(self):
         """Документ без типа и с неподходящим именем."""
         from unittest.mock import Mock
+
         doc = Mock()
         doc.document_type = None
         doc.file_name = "random.jpg"
-        
+
         result = self.matcher.match_document(doc, "individual_judicial")
         assert result is None

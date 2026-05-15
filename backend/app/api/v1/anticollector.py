@@ -12,22 +12,21 @@ This is a leadgen trojan horse — users install it for protection,
 we get their phone number + proof they have debt problems.
 """
 
-from uuid import UUID, uuid4
-from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import select, func, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.models.models import Client, Case, CaseEvent, Notification
+from app.models.models import Case, CaseEvent, Client
 
 router = APIRouter()
 
 
 # ─── Schemas ─────────────────────────────────────────────────
+
 
 class AnticollectorRegister(BaseModel):
     phone: str
@@ -88,19 +87,33 @@ KNOWN_COLLECTORS = {
 
 # Patterns indicating collector SMS
 COLLECTOR_SMS_PATTERNS = [
-    "задолженность", "долг", "просрочка", "взыскание", "оплатите",
-    "судебный приказ", "исполнительное производство", "пристав",
-    "коллектор", "цессия", "уступка права требования",
+    "задолженность",
+    "долг",
+    "просрочка",
+    "взыскание",
+    "оплатите",
+    "судебный приказ",
+    "исполнительное производство",
+    "пристав",
+    "коллектор",
+    "цессия",
+    "уступка права требования",
 ]
 
 THREAT_PATTERNS = [
-    "уголовная ответственность", "арест имущества", "выезд по адресу",
-    "опись имущества", "принудительное взыскание", "сообщим работодателю",
-    "сообщим родственникам", "ограничение выезда",
+    "уголовная ответственность",
+    "арест имущества",
+    "выезд по адресу",
+    "опись имущества",
+    "принудительное взыскание",
+    "сообщим работодателю",
+    "сообщим родственникам",
+    "ограничение выезда",
 ]
 
 
 # ─── Endpoints ───────────────────────────────────────────────
+
 
 @router.post("/register", response_model=AnticollectorRegisterResponse)
 async def register_anticollector_user(
@@ -108,7 +121,7 @@ async def register_anticollector_user(
     db: AsyncSession = Depends(get_db),
 ):
     """Register new Anticollector user.
-    
+
     This is the LEADGEN entry point:
     - User installs free app → registers with phone
     - Phone auto-becomes a warm lead in CRM
@@ -165,13 +178,10 @@ async def get_blocked_numbers(
     since_version: int = Query(0, description="Last known version for incremental sync"),
 ):
     """Get list of known collector phone numbers.
-    
+
     App syncs this list periodically to block incoming calls.
     """
-    numbers = [
-        {"phone": phone, "name": name, "category": "collector"}
-        for phone, name in KNOWN_COLLECTORS.items()
-    ]
+    numbers = [{"phone": phone, "name": name, "category": "collector"} for phone, name in KNOWN_COLLECTORS.items()]
 
     return {
         "version": 1,
@@ -186,11 +196,11 @@ async def report_collector_number(
     db: AsyncSession = Depends(get_db),
 ):
     """User reports a new collector number.
-    
+
     Crowdsourced collector database — if enough users report
     the same number, it gets added to the global block list.
     """
-    # In production: save to reported_numbers table, 
+    # In production: save to reported_numbers table,
     # add to global list after N reports
     return {
         "message": "Спасибо! Номер добавлен в базу.",
@@ -205,7 +215,7 @@ async def log_blocked_call(
     db: AsyncSession = Depends(get_db),
 ):
     """Log a blocked/recorded collector call.
-    
+
     Builds evidence trail for potential court proceedings.
     """
     # Find client
@@ -214,9 +224,7 @@ async def log_blocked_call(
 
     if client:
         # Find their case
-        case_result = await db.execute(
-            select(Case).where(Case.client_id == client.id).order_by(Case.created_at.desc())
-        )
+        case_result = await db.execute(select(Case).where(Case.client_id == client.id).order_by(Case.created_at.desc()))
         case = case_result.scalar_one_or_none()
 
         if case:
@@ -244,7 +252,7 @@ async def log_blocked_call(
 @router.post("/analyze-sms", response_model=SMSAnalysisResponse)
 async def analyze_collector_sms(data: SMSAnalysisRequest):
     """AI analysis of SMS from collectors.
-    
+
     Detects threats, legal violations, and provides advice.
     In production: calls Claude API for deep analysis.
     """
@@ -333,9 +341,7 @@ async def get_legal_tips():
 async def get_anticollector_stats(db: AsyncSession = Depends(get_db)):
     """Stats for the anticollector module (for CRM dashboard)."""
     # Total anticollector users (leads)
-    total_users = await db.execute(
-        select(func.count(Client.id)).where(Client.lead_source == "anticollector_app")
-    )
+    total_users = await db.execute(select(func.count(Client.id)).where(Client.lead_source == "anticollector_app"))
 
     # Converted to cases
     converted = await db.execute(

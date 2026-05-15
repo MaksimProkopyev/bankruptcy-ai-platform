@@ -7,20 +7,18 @@ Usage: python -m app.services.worker
 """
 
 import asyncio
-import json
-import os
 import time
-from uuid import UUID
 from datetime import datetime, timezone
+from uuid import UUID
 
 import httpx
 import redis.asyncio as redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.models import AITask, Document, DocumentStatus
-from app.core.config import settings
 
 AI_CORE_URL = settings.AI_CORE_URL
 QUEUE_KEY = "ai_task_queue"
@@ -59,6 +57,7 @@ async def process_task(task_id: str):
 
             if "confidence" in result:
                 from decimal import Decimal
+
                 task.confidence_score = Decimal(str(result["confidence"]))
 
         except Exception as e:
@@ -71,7 +70,9 @@ async def process_task(task_id: str):
                 task.status = "queued"
 
         await db.commit()
-        print(f"[Worker] Task {task_id} ({task.agent_name}/{task.task_type}): {task.status} in {task.processing_time_ms or 0}ms")
+        print(
+            f"[Worker] Task {task_id} ({task.agent_name}/{task.task_type}): {task.status} in {task.processing_time_ms or 0}ms"
+        )
 
 
 async def _process_ocr(task: AITask, db: AsyncSession) -> dict:

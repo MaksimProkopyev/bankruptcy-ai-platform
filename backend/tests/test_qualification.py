@@ -3,8 +3,8 @@
 Tests the pre_screen function which runs WITHOUT calling any LLM.
 """
 
-import sys
 import os
+import sys
 
 # Add ai-core to path for direct import
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "ai-core"))
@@ -66,11 +66,13 @@ def test_restructuring_option():
 
 
 def test_extrajudicial_option():
-    result = pre_screen(make_input(
-        total_debt=300_000,
-        has_enforcement_proceedings=True,
-        has_property=False,
-    ))
+    result = pre_screen(
+        make_input(
+            total_debt=300_000,
+            has_enforcement_proceedings=True,
+            has_property=False,
+        )
+    )
     assert "option:extrajudicial" in result["flags"]
 
 

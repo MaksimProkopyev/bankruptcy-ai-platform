@@ -6,24 +6,25 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import require_permission
 from app.db.session import get_db
 from app.models.lead_models import Lead
 from app.schemas.schemas import (
+    LeadCollectorRunResponse,
     LeadConvertRequest,
     LeadConvertResponse,
-    LeadCollectorRunResponse,
     LeadListResponse,
     LeadSourceStatsResponse,
 )
 from app.services.lead_collector.conversion import LeadConverter
 from app.services.lead_collector.registry import COLLECTOR_REGISTRY
-from app.core.permissions import require_permission
 
 router = APIRouter()
 
 
-@router.get("/stats", response_model=list[LeadSourceStatsResponse],
-            dependencies=[Depends(require_permission("leads", "read"))])
+@router.get(
+    "/stats", response_model=list[LeadSourceStatsResponse], dependencies=[Depends(require_permission("leads", "read"))]
+)
 async def get_source_stats(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(
@@ -44,8 +45,11 @@ async def get_source_stats(db: AsyncSession = Depends(get_db)):
     return [LeadSourceStatsResponse(**dict(row)) for row in rows]
 
 
-@router.get("/{source}/leads", response_model=list[LeadListResponse],
-            dependencies=[Depends(require_permission("leads", "read"))])
+@router.get(
+    "/{source}/leads",
+    response_model=list[LeadListResponse],
+    dependencies=[Depends(require_permission("leads", "read"))],
+)
 async def get_source_leads(
     source: str,
     status: str | None = None,
@@ -57,11 +61,7 @@ async def get_source_leads(
     if source not in COLLECTOR_REGISTRY:
         raise HTTPException(status_code=404, detail=f"Unknown source: {source}")
 
-    query = (
-        select(Lead)
-        .where(Lead.source == source)
-        .order_by(Lead.created_at.desc())
-    )
+    query = select(Lead).where(Lead.source == source).order_by(Lead.created_at.desc())
     if status:
         query = query.where(Lead.status == status)
     if not include_deduplicated:
@@ -72,8 +72,11 @@ async def get_source_leads(
     return result.scalars().all()
 
 
-@router.post("/{source}/run", response_model=LeadCollectorRunResponse,
-             dependencies=[Depends(require_permission("leads", "write"))])
+@router.post(
+    "/{source}/run",
+    response_model=LeadCollectorRunResponse,
+    dependencies=[Depends(require_permission("leads", "write"))],
+)
 async def run_collector(
     source: str,
     db: AsyncSession = Depends(get_db),
@@ -87,8 +90,12 @@ async def run_collector(
     return LeadCollectorRunResponse(**summary.model_dump())
 
 
-@router.post("/leads/{lead_id}/convert", response_model=LeadConvertResponse, status_code=201,
-             dependencies=[Depends(require_permission("leads", "write"))])
+@router.post(
+    "/leads/{lead_id}/convert",
+    response_model=LeadConvertResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("leads", "write"))],
+)
 async def convert_lead(
     lead_id: UUID,
     payload: LeadConvertRequest,

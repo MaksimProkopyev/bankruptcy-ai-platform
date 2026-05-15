@@ -1,6 +1,7 @@
 """
 Pydantic schemas for document completeness service.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -11,13 +12,14 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.models.case_checklist_item import ChecklistItemStatus, MatchMethod
 
-
 # ============================================================================
 # Checklist schemas (for loading JSON)
 # ============================================================================
 
+
 class ChecklistItemSchema(BaseModel):
     """Один item из JSON-чеклиста."""
+
     id: str
     name: str
     category: str
@@ -32,6 +34,7 @@ class ChecklistItemSchema(BaseModel):
 
 class ChecklistSchema(BaseModel):
     """Весь JSON-чеклист."""
+
     checklist_id: str
     name: str
     client_scope: str
@@ -44,14 +47,17 @@ class ChecklistSchema(BaseModel):
 # Request schemas
 # ============================================================================
 
+
 class CompletenessInitRequest(BaseModel):
     """Запрос на инициализацию чеклиста для дела."""
+
     checklist_id: str | None = None
     # Если None — определяется автоматически по case.client_scope + case.procedure_type
 
 
 class CompletenessItemUpdateRequest(BaseModel):
     """Обновление статуса item."""
+
     status: ChecklistItemStatus
     document_id: uuid.UUID | None = None
     rejection_reason: str | None = None
@@ -69,11 +75,13 @@ class CompletenessItemUpdateRequest(BaseModel):
 # Response schemas
 # ============================================================================
 
+
 class CompletenessItemResponse(BaseModel):
     """Один item чеклиста с текущим статусом."""
-    id: uuid.UUID                      # DB id (case_checklist_items.id)
-    checklist_item_id: str             # "passport_main"
-    name: str                          # из JSON-чеклиста
+
+    id: uuid.UUID  # DB id (case_checklist_items.id)
+    checklist_item_id: str  # "passport_main"
+    name: str  # из JSON-чеклиста
     category: str
     required: bool
     description: str
@@ -81,7 +89,7 @@ class CompletenessItemResponse(BaseModel):
     how_to_get: str
     status: ChecklistItemStatus
     document_id: uuid.UUID | None = None
-    document_name: str | None = None   # имя файла (join с documents)
+    document_name: str | None = None  # имя файла (join с documents)
     matched_by: MatchMethod | None = None
     reviewer_id: uuid.UUID | None = None
     reviewed_at: datetime | None = None
@@ -95,10 +103,11 @@ class CompletenessItemResponse(BaseModel):
 
 class CategoryProgress(BaseModel):
     """Прогресс по одной категории."""
+
     category: str
-    category_name: str                 # человекочитаемое название
+    category_name: str  # человекочитаемое название
     total: int
-    completed: int                     # approved + waived
+    completed: int  # approved + waived
     required_total: int
     required_completed: int
     items: list[CompletenessItemResponse]
@@ -106,31 +115,34 @@ class CategoryProgress(BaseModel):
 
 class CompletenessProgressResponse(BaseModel):
     """Полный прогресс комплектности для дела."""
+
     case_id: uuid.UUID
     checklist_id: str
     checklist_name: str
     total_items: int
-    completed_items: int               # approved + waived
+    completed_items: int  # approved + waived
     required_items: int
     required_completed: int
-    progress_percent: float            # 0.0–100.0 (по required)
-    is_complete: bool                  # все required items complete
+    progress_percent: float  # 0.0–100.0 (по required)
+    is_complete: bool  # все required items complete
     categories: list[CategoryProgress]
     missing_required: list[CompletenessItemResponse]  # required items со статусом missing/rejected
 
 
 class AutoMatchDetail(BaseModel):
     """Детали одного совпадения."""
+
     checklist_item_id: str
     document_id: uuid.UUID
     document_name: str
     matched_by: MatchMethod
-    confidence: float                  # 0.0–1.0 для fuzzy
+    confidence: float  # 0.0–1.0 для fuzzy
 
 
 class AutoMatchResponse(BaseModel):
     """Результат auto-matching."""
-    matched: int                       # сколько items получили привязку
+
+    matched: int  # сколько items получили привязку
     details: list[AutoMatchDetail]
 
 

@@ -1,6 +1,6 @@
 """Tests for document checklist service."""
 
-from app.services.document_checklist import get_required_documents, calculate_completeness
+from app.services.document_checklist import calculate_completeness, get_required_documents
 
 
 def test_base_documents_always_present():

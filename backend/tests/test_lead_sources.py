@@ -49,4 +49,3 @@ async def test_convert_lead_to_client_and_case(client: AsyncClient):
         json={},
     )
     assert convert_again.status_code == 400
-

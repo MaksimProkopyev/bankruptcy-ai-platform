@@ -3,24 +3,32 @@
 Provides dashboard, personal tasks, and suggestions (idea bank) for staff users.
 """
 
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.permissions import require_roles, require_staff
 from app.db.session import get_db
 from app.models.models import (
-    User, UserRole, Case, Deadline, Task, Suggestion,
+    Case,
+    Deadline,
+    Suggestion,
+    Task,
+    User,
+    UserRole,
 )
-from app.core.permissions import require_staff, require_roles
 from app.schemas.schemas import (
-    TaskResponse, TaskStatusUpdate,
-    SuggestionCreate, SuggestionUpdate, SuggestionResponse,
     StaffDashboardResponse,
+    SuggestionCreate,
+    SuggestionResponse,
+    SuggestionUpdate,
+    TaskResponse,
+    TaskStatusUpdate,
 )
 
 router = APIRouter()
@@ -38,6 +46,7 @@ _VALID_TRANSITIONS = {
 # ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
+
 
 @router.get("/me/dashboard", response_model=StaffDashboardResponse)
 async def get_my_dashboard(
@@ -61,11 +70,7 @@ async def get_my_dashboard(
     my_cases_count = cases_q.scalar_one() or 0
 
     # Open tasks
-    tasks_q = await db.execute(
-        select(func.count(Task.id)).where(
-            and_(Task.assigned_to == uid, Task.status != "done")
-        )
-    )
+    tasks_q = await db.execute(select(func.count(Task.id)).where(and_(Task.assigned_to == uid, Task.status != "done")))
     my_tasks_count = tasks_q.scalar_one() or 0
 
     # Deadlines today
@@ -108,15 +113,11 @@ async def get_my_dashboard(
     # Admin / ops see team stats additionally
     if current_user.role in _ADMIN_ROLES:
         team_cases_q = await db.execute(
-            select(func.count(Case.id)).where(
-                Case.status.notin_(["rejected", "cancelled", "debt_discharged"])
-            )
+            select(func.count(Case.id)).where(Case.status.notin_(["rejected", "cancelled", "debt_discharged"]))
         )
         result["team_cases_active"] = team_cases_q.scalar_one() or 0
 
-        team_tasks_q = await db.execute(
-            select(func.count(Task.id)).where(Task.status != "done")
-        )
+        team_tasks_q = await db.execute(select(func.count(Task.id)).where(Task.status != "done"))
         result["team_tasks_open"] = team_tasks_q.scalar_one() or 0
 
         team_overdue_q = await db.execute(
@@ -135,6 +136,7 @@ async def get_my_dashboard(
 # ---------------------------------------------------------------------------
 # Tasks
 # ---------------------------------------------------------------------------
+
 
 @router.get("/me/tasks", response_model=list[TaskResponse])
 async def get_my_tasks(
@@ -161,17 +163,19 @@ async def get_my_tasks(
 
     response = []
     for t in tasks:
-        response.append(TaskResponse(
-            id=t.id,
-            title=t.title,
-            description=t.description,
-            status=t.status,
-            priority=t.priority,
-            due_date=t.due_date,
-            case_id=t.case_id,
-            case_number=t.case.case_number if t.case else None,
-            created_at=t.created_at,
-        ))
+        response.append(
+            TaskResponse(
+                id=t.id,
+                title=t.title,
+                description=t.description,
+                status=t.status,
+                priority=t.priority,
+                due_date=t.due_date,
+                case_id=t.case_id,
+                case_number=t.case.case_number if t.case else None,
+                created_at=t.created_at,
+            )
+        )
     return response
 
 
@@ -190,10 +194,7 @@ async def update_task_status(
 
     allowed = _VALID_TRANSITIONS.get(task.status, set())
     if body.status not in allowed:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot transition from '{task.status}' to '{body.status}'"
-        )
+        raise HTTPException(status_code=400, detail=f"Cannot transition from '{task.status}' to '{body.status}'")
 
     task.status = body.status
     task.updated_at = datetime.now(timezone.utc)
@@ -222,6 +223,7 @@ async def update_task_status(
 # ---------------------------------------------------------------------------
 # Suggestions (idea bank)
 # ---------------------------------------------------------------------------
+
 
 @router.get("/suggestions", response_model=list[SuggestionResponse])
 async def list_suggestions(

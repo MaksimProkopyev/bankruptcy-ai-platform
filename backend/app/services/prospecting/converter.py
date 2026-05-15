@@ -1,14 +1,12 @@
 """Prospect to Lead conversion service."""
 
-from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-from app.models.prospect import Prospect
-from app.models.lead_models import Lead
-from app.models.models import User
 from datetime import datetime
-import uuid
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.lead_models import Lead
+from app.models.prospect import Prospect
 
 
 class ProspectToLeadConverter:

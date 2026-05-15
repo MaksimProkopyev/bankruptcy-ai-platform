@@ -8,9 +8,9 @@ Uses Tochka Open Banking API for:
 - Auto-generating acts after payment
 """
 
-import os
 import hashlib
 import hmac
+import os
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from uuid import UUID
@@ -19,9 +19,8 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.models import Case, Client, Payment, CaseEvent, Notification
-from app.models.billing_models import Invoice, Act, BankWebhook
-
+from app.models.billing_models import Act, BankWebhook, Invoice
+from app.models.models import Case, CaseEvent, Client, Notification, Payment
 
 TOCHKA_API = os.environ.get("TOCHKA_API_URL", "https://enter.tochka.com/api/v2")
 TOCHKA_TOKEN = os.environ.get("TOCHKA_API_TOKEN", "")
@@ -58,7 +57,7 @@ class TochkaService:
         due_date: date | None = None,
     ) -> Invoice:
         """Create invoice and optionally push to Tochka for payment link.
-        
+
         items: [{description: "Юридические услуги", quantity: 1, amount: 100000}]
         """
         case = await self.db.get(Case, case_id)
@@ -97,9 +96,7 @@ class TochkaService:
 
         return invoice
 
-    async def send_invoice_to_client(
-        self, invoice_id: UUID, via: str = "lk"
-    ) -> Invoice:
+    async def send_invoice_to_client(self, invoice_id: UUID, via: str = "lk") -> Invoice:
         """Send invoice to client via preferred channel."""
         invoice = await self.db.get(Invoice, invoice_id)
         if not invoice:
@@ -111,12 +108,14 @@ class TochkaService:
             invoice.status = "sent"
 
         # Create notification
-        self.db.add(Notification(
-            client_id=invoice.client_id,
-            case_id=invoice.case_id,
-            title=f"Новый счёт: {invoice.invoice_number}",
-            body=f"Сумма: {invoice.total_amount:,.0f} ₽. Оплатите в личном кабинете.",
-        ))
+        self.db.add(
+            Notification(
+                client_id=invoice.client_id,
+                case_id=invoice.case_id,
+                title=f"Новый счёт: {invoice.invoice_number}",
+                body=f"Сумма: {invoice.total_amount:,.0f} ₽. Оплатите в личном кабинете.",
+            )
+        )
 
         return invoice
 
@@ -124,7 +123,7 @@ class TochkaService:
 
     async def process_webhook(self, payload: dict, signature: str | None = None) -> BankWebhook:
         """Process incoming payment webhook from Tochka.
-        
+
         Tochka sends POST with payment details when money arrives.
         We match it to an invoice and update payment status.
         """
@@ -163,13 +162,12 @@ class TochkaService:
         # Try to find invoice number in payment purpose
         # Typical: "Оплата по счёту INV-202503-1001"
         import re
+
         inv_match = re.search(r"INV-\d{6}-\d{4}", purpose)
 
         invoice = None
         if inv_match:
-            result = await self.db.execute(
-                select(Invoice).where(Invoice.invoice_number == inv_match.group())
-            )
+            result = await self.db.execute(select(Invoice).where(Invoice.invoice_number == inv_match.group()))
             invoice = result.scalar_one_or_none()
 
         if not invoice:
@@ -204,22 +202,26 @@ class TochkaService:
                     payment.paid_date = date.today()
 
             # Log event
-            self.db.add(CaseEvent(
-                case_id=invoice.case_id,
-                event_type="payment_received",
-                title=f"Оплата получена: {invoice.total_amount:,.0f} ₽",
-                description=f"Счёт {invoice.invoice_number}",
-                is_visible_to_client=True,
-                is_system_event=True,
-            ))
+            self.db.add(
+                CaseEvent(
+                    case_id=invoice.case_id,
+                    event_type="payment_received",
+                    title=f"Оплата получена: {invoice.total_amount:,.0f} ₽",
+                    description=f"Счёт {invoice.invoice_number}",
+                    is_visible_to_client=True,
+                    is_system_event=True,
+                )
+            )
 
             # Notify client
-            self.db.add(Notification(
-                client_id=invoice.client_id,
-                case_id=invoice.case_id,
-                title="Оплата получена",
-                body=f"Счёт {invoice.invoice_number} на сумму {invoice.total_amount:,.0f} ₽ оплачен.",
-            ))
+            self.db.add(
+                Notification(
+                    client_id=invoice.client_id,
+                    case_id=invoice.case_id,
+                    title="Оплата получена",
+                    body=f"Счёт {invoice.invoice_number} на сумму {invoice.total_amount:,.0f} ₽ оплачен.",
+                )
+            )
         else:
             webhook.processing_error = "No matching invoice found"
 
@@ -241,10 +243,12 @@ class TochkaService:
         act_number = f"ACT-{datetime.now().strftime('%Y%m')}-{_invoice_seq:04d}"
 
         if not services:
-            services = [{
-                "description": "Юридическое сопровождение процедуры банкротства",
-                "amount": float(case.service_fee or 0),
-            }]
+            services = [
+                {
+                    "description": "Юридическое сопровождение процедуры банкротства",
+                    "amount": float(case.service_fee or 0),
+                }
+            ]
 
         total = sum(Decimal(str(s["amount"])) for s in services)
 
@@ -265,9 +269,7 @@ class TochkaService:
     async def reconcile_statements(self) -> dict:
         """Fetch bank statements and match unreconciled payments."""
         # Find unmatched webhooks
-        result = await self.db.execute(
-            select(BankWebhook).where(BankWebhook.is_matched == False)
-        )
+        result = await self.db.execute(select(BankWebhook).where(not BankWebhook.is_matched))
         unmatched = result.scalars().all()
 
         matched_count = 0

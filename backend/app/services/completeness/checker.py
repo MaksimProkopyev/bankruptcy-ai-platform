@@ -1,6 +1,7 @@
 """
 Main service for document completeness checking.
 """
+
 from __future__ import annotations
 
 import logging
@@ -8,7 +9,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,7 +28,6 @@ from .schemas import (
     CategoryProgress,
     ChecklistItemSchema,
     ChecklistSchema,
-    CompletenessInitRequest,
     CompletenessItemResponse,
     CompletenessItemUpdateRequest,
     CompletenessProgressResponse,
@@ -56,7 +56,7 @@ class CompletenessChecker:
         checklist_id: str | None = None,
     ) -> CompletenessProgressResponse:
         """Инициализировать чеклист для дела.
-        
+
         1. Если checklist_id не указан — определить по case.client_scope + case.procedure_type
         2. Загрузить чеклист из JSON
         3. Создать CaseChecklistItem для каждого item со статусом 'missing'
@@ -119,13 +119,13 @@ class CompletenessChecker:
         case_id: uuid.UUID,
     ) -> CompletenessProgressResponse:
         """Получить текущий прогресс комплектности.
-        
+
         1. Загрузить все CaseChecklistItem для case_id
         2. Загрузить соответствующий JSON-чеклист (для метаданных: name, description, etc.)
         3. Объединить DB-статусы с JSON-метаданными
         4. Рассчитать прогресс по категориям и общий
         5. Сформировать CompletenessProgressResponse
-        
+
         Для document_name: join с documents по document_id.
         """
         # Загружаем items из БД
@@ -162,17 +162,15 @@ class CompletenessChecker:
                 document_name = doc_map.get(db_item.document_id)
 
             # Создаём response item
-            response_item = self._build_item_response(
-                db_item, checklist_item, document_name
-            )
+            response_item = self._build_item_response(db_item, checklist_item, document_name)
 
             # Добавляем в категорию
             cat = checklist_item.category
             categories.setdefault(cat, []).append(response_item)
 
         # Рассчитываем прогресс
-        total, completed, required_total, required_completed, progress_percent, is_complete = (
-            self._calculate_progress(db_items, checklist)
+        total, completed, required_total, required_completed, progress_percent, is_complete = self._calculate_progress(
+            db_items, checklist
         )
 
         # Формируем категории с прогрессом
@@ -180,9 +178,15 @@ class CompletenessChecker:
         missing_required = []
         for cat, items in categories.items():
             cat_total = len(items)
-            cat_completed = sum(1 for i in items if i.status in (ChecklistItemStatus.APPROVED, ChecklistItemStatus.WAIVED))
+            cat_completed = sum(
+                1 for i in items if i.status in (ChecklistItemStatus.APPROVED, ChecklistItemStatus.WAIVED)
+            )
             cat_required = sum(1 for i in items if i.required)
-            cat_required_completed = sum(1 for i in items if i.required and i.status in (ChecklistItemStatus.APPROVED, ChecklistItemStatus.WAIVED))
+            cat_required_completed = sum(
+                1
+                for i in items
+                if i.required and i.status in (ChecklistItemStatus.APPROVED, ChecklistItemStatus.WAIVED)
+            )
 
             # Собираем required items со статусом missing/rejected
             for item in items:
@@ -230,7 +234,7 @@ class CompletenessChecker:
         reviewer_id: uuid.UUID | None = None,
     ) -> CompletenessItemResponse:
         """Обновить статус item.
-        
+
         Валидация переходов:
         - missing → uploaded (при привязке документа)
         - uploaded → review
@@ -238,7 +242,7 @@ class CompletenessChecker:
         - rejected → uploaded (повторная загрузка)
         - любой → waived (только lawyer/admin)
         - waived → missing (отмена waive)
-        
+
         Если status == approved/rejected — заполнить reviewer_id и reviewed_at.
         Если status == rejected — требуется rejection_reason.
         Если document_id передан — привязать документ, статус → uploaded.
@@ -250,9 +254,7 @@ class CompletenessChecker:
 
         # Проверяем переход статуса
         if not self._validate_status_transition(db_item.status, update.status):
-            raise ValueError(
-                f"Invalid status transition: {db_item.status} → {update.status}"
-            )
+            raise ValueError(f"Invalid status transition: {db_item.status} → {update.status}")
 
         # Если передан document_id, привязываем документ
         if update.document_id:
@@ -323,7 +325,7 @@ class CompletenessChecker:
         case_id: uuid.UUID,
     ) -> AutoMatchResponse:
         """Автоматическое сопоставление документов с чеклистом.
-        
+
         1. Загрузить все documents для case_id
         2. Загрузить все CaseChecklistItem для case_id
         3. Определить уже привязанные items
@@ -346,16 +348,10 @@ class CompletenessChecker:
             raise ValueError(f"No checklist items found for case {case_id}")
 
         checklist_id = db_items[0].checklist_id
-        existing_matches = {
-            item.checklist_item_id
-            for item in db_items
-            if item.document_id is not None
-        }
+        existing_matches = {item.checklist_item_id for item in db_items if item.document_id is not None}
 
         # Выполняем matching
-        matches: list[AutoMatchDetail] = self._matcher.auto_match_documents(
-            documents, checklist_id, existing_matches
-        )
+        matches: list[AutoMatchDetail] = self._matcher.auto_match_documents(documents, checklist_id, existing_matches)
 
         # Применяем matches к БД
         matched = 0
@@ -396,7 +392,7 @@ class CompletenessChecker:
         case_id: uuid.UUID,
     ) -> dict:
         """Экспорт чеклиста для отчёта.
-        
+
         Returns: dict с полным состоянием чеклиста (для генерации PDF/DOCX).
         """
         progress = await self.get_progress(case_id)
@@ -430,18 +426,22 @@ class CompletenessChecker:
                     ChecklistItemStatus.WAIVED: "отложен",
                 }.get(item.status, str(item.status))
 
-                cat_items.append({
-                    "name": item.name,
-                    "status": status_display,
-                    "document": item.document_name,
-                    "required": item.required,
-                    "notes": item.notes,
-                })
+                cat_items.append(
+                    {
+                        "name": item.name,
+                        "status": status_display,
+                        "document": item.document_name,
+                        "required": item.required,
+                        "notes": item.notes,
+                    }
+                )
 
-            export["categories"].append({
-                "name": cat.category_name,
-                "items": cat_items,
-            })
+            export["categories"].append(
+                {
+                    "name": cat.category_name,
+                    "items": cat_items,
+                }
+            )
 
         return export
 
@@ -478,9 +478,7 @@ class CompletenessChecker:
 
     async def _get_document_map(self, case_id: uuid.UUID) -> dict[uuid.UUID, str]:
         """Создать mapping document_id → file_name для дела."""
-        stmt = select(Document.id, Document.file_name).where(
-            Document.case_id == case_id
-        )
+        stmt = select(Document.id, Document.file_name).where(Document.case_id == case_id)
         result = await self._session.execute(stmt)
         return {row[0]: row[1] for row in result.all()}
 
@@ -490,9 +488,9 @@ class CompletenessChecker:
         checklist: ChecklistSchema,
     ) -> tuple[int, int, int, int, float, bool]:
         """Рассчитать прогресс.
-        
+
         Returns: (total, completed, required_total, required_completed, progress_percent, is_complete)
-        
+
         completed = approved + waived
         progress_percent = required_completed / required_total * 100 (или 100.0 если required_total == 0)
         is_complete = required_completed == required_total
@@ -555,7 +553,7 @@ class CompletenessChecker:
         target: ChecklistItemStatus,
     ) -> bool:
         """Проверить допустимость перехода статуса.
-        
+
         Допустимые переходы:
         missing → uploaded, waived
         uploaded → review, missing, waived

@@ -1,33 +1,33 @@
 """Prospects API endpoints."""
 
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.permissions import require_permission
 from app.db.session import get_db
 from app.schemas.prospect import (
-    InboundProspectRequest,
-    ProspectFilters,
-    ProspectResponse,
-    ProspectDetailResponse,
-    ProspectListResponse,
-    ProspectStatsResponse,
-    SourceConfigResponse,
-    SourceConfigUpdate,
     BulkConvertRequest,
     BulkConvertResponse,
+    InboundProspectRequest,
+    ProspectDetailResponse,
+    ProspectFilters,
+    ProspectListResponse,
+    ProspectResponse,
+    ProspectStatsResponse,
     RunParserResponse,
+    SourceConfigResponse,
+    SourceConfigUpdate,
 )
 from app.services.prospecting.service import ProspectingService
-from app.core.permissions import require_permission
 
 router = APIRouter()
 service = ProspectingService()
 
 
-@router.get("/", response_model=ProspectListResponse,
-            dependencies=[Depends(require_permission("leads", "read"))])
+@router.get("/", response_model=ProspectListResponse, dependencies=[Depends(require_permission("leads", "read"))])
 async def list_prospects(
     status: Optional[str] = None,
     source_category: Optional[str] = None,
@@ -67,8 +67,9 @@ async def list_prospects(
     )
 
 
-@router.get("/{prospect_id}", response_model=ProspectDetailResponse,
-            dependencies=[Depends(require_permission("leads", "read"))])
+@router.get(
+    "/{prospect_id}", response_model=ProspectDetailResponse, dependencies=[Depends(require_permission("leads", "read"))]
+)
 async def get_prospect(
     prospect_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -97,8 +98,9 @@ async def create_inbound_prospect(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/run/{source_type}", response_model=RunParserResponse,
-             dependencies=[Depends(require_permission("leads", "write"))])
+@router.post(
+    "/run/{source_type}", response_model=RunParserResponse, dependencies=[Depends(require_permission("leads", "write"))]
+)
 async def run_parser(
     source_type: str,
     db: AsyncSession = Depends(get_db),
@@ -113,8 +115,7 @@ async def run_parser(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/run-all",
-             dependencies=[Depends(require_permission("leads", "write"))])
+@router.post("/run-all", dependencies=[Depends(require_permission("leads", "write"))])
 async def run_all_parsers(
     db: AsyncSession = Depends(get_db),
 ):
@@ -126,15 +127,18 @@ async def run_all_parsers(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{prospect_id}/convert", response_model=ProspectResponse,
-             dependencies=[Depends(require_permission("leads", "write"))])
+@router.post(
+    "/{prospect_id}/convert",
+    response_model=ProspectResponse,
+    dependencies=[Depends(require_permission("leads", "write"))],
+)
 async def convert_prospect(
     prospect_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Конвертировать в lead."""
     try:
-        lead = await service.convert_to_lead(str(prospect_id), db)
+        await service.convert_to_lead(str(prospect_id), db)
         # Возвращаем обновлённый prospect
         prospect = await service.get_prospect(str(prospect_id), db)
         return prospect
@@ -144,8 +148,9 @@ async def convert_prospect(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/bulk-convert", response_model=BulkConvertResponse,
-             dependencies=[Depends(require_permission("leads", "write"))])
+@router.post(
+    "/bulk-convert", response_model=BulkConvertResponse, dependencies=[Depends(require_permission("leads", "write"))]
+)
 async def bulk_convert_prospects(
     request: BulkConvertRequest,
     db: AsyncSession = Depends(get_db),
@@ -158,8 +163,11 @@ async def bulk_convert_prospects(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{prospect_id}/reject", response_model=ProspectResponse,
-             dependencies=[Depends(require_permission("leads", "write"))])
+@router.post(
+    "/{prospect_id}/reject",
+    response_model=ProspectResponse,
+    dependencies=[Depends(require_permission("leads", "write"))],
+)
 async def reject_prospect(
     prospect_id: UUID,
     reason: str = Query(..., description="Причина отказа"),
@@ -176,8 +184,7 @@ async def reject_prospect(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/stats", response_model=ProspectStatsResponse,
-            dependencies=[Depends(require_permission("leads", "read"))])
+@router.get("/stats", response_model=ProspectStatsResponse, dependencies=[Depends(require_permission("leads", "read"))])
 async def get_stats(
     db: AsyncSession = Depends(get_db),
 ):
@@ -186,8 +193,9 @@ async def get_stats(
     return ProspectStatsResponse(**stats)
 
 
-@router.get("/sources", response_model=list[SourceConfigResponse],
-            dependencies=[Depends(require_permission("leads", "read"))])
+@router.get(
+    "/sources", response_model=list[SourceConfigResponse], dependencies=[Depends(require_permission("leads", "read"))]
+)
 async def list_sources(
     db: AsyncSession = Depends(get_db),
 ):
@@ -196,8 +204,11 @@ async def list_sources(
     return sources
 
 
-@router.patch("/sources/{source_type}", response_model=SourceConfigResponse,
-              dependencies=[Depends(require_permission("leads", "write"))])
+@router.patch(
+    "/sources/{source_type}",
+    response_model=SourceConfigResponse,
+    dependencies=[Depends(require_permission("leads", "write"))],
+)
 async def update_source(
     source_type: str,
     updates: SourceConfigUpdate,

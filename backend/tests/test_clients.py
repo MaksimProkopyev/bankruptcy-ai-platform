@@ -39,12 +39,22 @@ async def test_create_and_list_client(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_search_clients(client: AsyncClient):
     # Create two clients
-    await client.post("/api/v1/clients/", json={
-        "first_name": "Анна", "last_name": "Сидорова", "phone": "+79001111111",
-    })
-    await client.post("/api/v1/clients/", json={
-        "first_name": "Борис", "last_name": "Козлов", "phone": "+79002222222",
-    })
+    await client.post(
+        "/api/v1/clients/",
+        json={
+            "first_name": "Анна",
+            "last_name": "Сидорова",
+            "phone": "+79001111111",
+        },
+    )
+    await client.post(
+        "/api/v1/clients/",
+        json={
+            "first_name": "Борис",
+            "last_name": "Козлов",
+            "phone": "+79002222222",
+        },
+    )
 
     # Search by last name
     res = await client.get("/api/v1/clients/?search=Сидоров")

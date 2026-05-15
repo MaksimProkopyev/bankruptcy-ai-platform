@@ -18,10 +18,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add document_type column to documents table
-    op.add_column(
-        "documents",
-        sa.Column("document_type", sa.String(50), nullable=True)
+    # Add document_type column to documents table if it doesn't already exist
+    op.execute(
+        "ALTER TABLE documents ADD COLUMN IF NOT EXISTS document_type VARCHAR(50)"
     )
 
     # Create case_checklist_items table

@@ -2,9 +2,9 @@
 
 import random
 from typing import List
-from datetime import datetime
 
 from app.schemas.prospect import RawProspect
+
 from .base import BaseParser
 
 

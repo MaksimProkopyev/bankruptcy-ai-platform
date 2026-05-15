@@ -10,13 +10,13 @@ This module provides:
 from .checker import CompletenessChecker
 from .matcher import DocumentMatcher
 from .schemas import (
+    AutoMatchResponse,
     ChecklistItemSchema,
     ChecklistSchema,
-    CompletenessProgressResponse,
-    CompletenessItemResponse,
     CompletenessInitRequest,
+    CompletenessItemResponse,
     CompletenessItemUpdateRequest,
-    AutoMatchResponse,
+    CompletenessProgressResponse,
 )
 
 __all__ = [

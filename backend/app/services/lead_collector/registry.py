@@ -16,4 +16,3 @@ COLLECTOR_REGISTRY: dict[str, type[BaseCollector]] = {
     "fns": FNSCollector,
     "rosreestr": RosreestrCollector,
 }
-

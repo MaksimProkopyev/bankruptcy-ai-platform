@@ -2,20 +2,21 @@
 Утилита для записи в audit_log.
 Вызывается из роутеров после мутирующих операций.
 """
+
 import json
 import uuid
-from typing import Optional, Any, Dict
+from typing import Any, Dict, Optional
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def log_action(
     db: AsyncSession,
     *,
     user_id: Optional[uuid.UUID],
-    action: str,                     # "create", "update", "delete", "login", "logout"
-    entity_type: str,                # "case", "user", "document", "payment", ...
+    action: str,  # "create", "update", "delete", "login", "logout"
+    entity_type: str,  # "case", "user", "document", "payment", ...
     entity_id: Optional[uuid.UUID] = None,
     changes: Optional[Dict[str, Any]] = None,
     ip_address: Optional[str] = None,
@@ -46,6 +47,6 @@ async def log_action(
             "changes": json.dumps(changes) if changes else None,
             "ip_address": ip_address,
             "user_agent": user_agent,
-        }
+        },
     )
     # Не делаем commit здесь — caller управляет транзакцией

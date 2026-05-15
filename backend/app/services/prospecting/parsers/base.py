@@ -10,6 +10,7 @@ from app.schemas.prospect import RawProspect
 @dataclass
 class ParserConfig:
     """Конфигурация парсера."""
+
     mock_mode: bool = True
     regions: Optional[List[str]] = None
     min_debt: Optional[float] = None

@@ -2,21 +2,21 @@
 
 from fastapi import APIRouter
 
-from .auth import router as auth_router
-from .users import router as users_router
-from .clients import router as clients_router
-from .cases import router as cases_router
-from .documents import router as documents_router
 from .ai import router as ai_router
 from .analytics import router as analytics_router
-from .notifications import router as notifications_router
+from .anticollector import router as anticollector_router
+from .auth import router as auth_router
+from .billing import router as billing_router
+from .cases import router as cases_router
 from .client_auth import router as client_auth_router
 from .client_cabinet import router as client_cabinet_router
-from .anticollector import router as anticollector_router
-from .billing import router as billing_router
-from .lead_sources import router as lead_sources_router
-from .prospects import router as prospects_router
+from .clients import router as clients_router
 from .completeness import router as completeness_router
+from .documents import router as documents_router
+from .lead_sources import router as lead_sources_router
+from .notifications import router as notifications_router
+from .prospects import router as prospects_router
+from .users import router as users_router
 
 api_router = APIRouter(prefix="/api/v1")
 

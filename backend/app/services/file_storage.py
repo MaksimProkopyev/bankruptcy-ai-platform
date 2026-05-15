@@ -1,7 +1,6 @@
 """File storage service — S3/MinIO abstraction."""
 
 import hashlib
-from io import BytesIO
 from uuid import uuid4
 
 import boto3
@@ -82,6 +81,7 @@ class FileStorage:
 
 # Singleton
 _storage = None
+
 
 def get_storage() -> FileStorage:
     global _storage

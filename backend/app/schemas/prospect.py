@@ -1,11 +1,10 @@
 """Pydantic schemas for leadgen/prospecting layer."""
 
 from datetime import datetime
-from decimal import Decimal
-from typing import Optional, Literal
+from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 # ---- Inbound request ----

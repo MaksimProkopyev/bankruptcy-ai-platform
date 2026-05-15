@@ -1,6 +1,7 @@
 """
 Document matcher for checklist items.
 """
+
 from __future__ import annotations
 
 import json
@@ -49,12 +50,12 @@ class DocumentMatcher:
 
     def resolve_checklist_id(self, client_scope: str, procedure_type: str) -> str:
         """Определить checklist_id по client_scope и procedure_type.
-        
+
         Mapping:
         - individual + judicial → individual_judicial
         - individual + extrajudicial → individual_extrajudicial
         - sole_proprietor + judicial → sole_proprietor_judicial
-        
+
         Raises ValueError if no matching checklist.
         """
         # Нормализуем значения
@@ -78,14 +79,10 @@ class DocumentMatcher:
 
         # Попробуем найти по частичному совпадению
         for cid, checklist in self._checklists.items():
-            if (checklist.client_scope.lower() == client_scope and
-                checklist.procedure_type.lower() == procedure_type):
+            if checklist.client_scope.lower() == client_scope and checklist.procedure_type.lower() == procedure_type:
                 return cid
 
-        raise ValueError(
-            f"No checklist found for client_scope={client_scope}, "
-            f"procedure_type={procedure_type}"
-        )
+        raise ValueError(f"No checklist found for client_scope={client_scope}, procedure_type={procedure_type}")
 
     def match_by_document_type(
         self,
@@ -93,7 +90,7 @@ class DocumentMatcher:
         checklist_id: str,
     ) -> str | None:
         """V1: exact match по document_type == checklist_item.id.
-        
+
         Returns checklist_item_id or None.
         """
         checklist = self.get_checklist(checklist_id)
@@ -120,10 +117,10 @@ class DocumentMatcher:
         threshold: float = 0.6,
     ) -> list[tuple[str, float]]:
         """V1.5: fuzzy match по filename vs aliases.
-        
+
         Returns: list of (checklist_item_id, confidence) sorted by confidence desc.
         Только результаты с confidence >= threshold.
-        
+
         Алгоритм:
         1. Нормализовать filename: lowercase, убрать расширение, заменить _ и - на пробелы
         2. Для каждого item в чеклисте:
@@ -163,15 +160,15 @@ class DocumentMatcher:
         existing_matches: set[str],  # уже привязанные checklist_item_ids
     ) -> list[AutoMatchDetail]:
         """Автоматическое сопоставление документов с чеклистом.
-        
+
         Стратегия (порядок):
         1. Exact match по document.document_type (если заполнен)
         2. Fuzzy match по document.name (filename)
-        
+
         Пропускает items, которые уже привязаны (existing_matches).
         Каждый document может быть привязан только к одному item.
         Каждый item может быть привязан только к одному document.
-        
+
         Returns: list of AutoMatchDetail.
         """
         checklist = self.get_checklist(checklist_id)
@@ -187,7 +184,7 @@ class DocumentMatcher:
             if not doc.document_type:
                 continue
 
-            doc_type = doc.document_type.value if hasattr(doc.document_type, 'value') else str(doc.document_type)
+            doc_type = doc.document_type.value if hasattr(doc.document_type, "value") else str(doc.document_type)
             for item in checklist.items:
                 if item.id in used_items:
                     continue

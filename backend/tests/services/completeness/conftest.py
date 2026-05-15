@@ -1,13 +1,14 @@
 """Fixtures for completeness tests."""
+
 from __future__ import annotations
 
 import uuid
+
 import pytest_asyncio
-from datetime import datetime, date
 from httpx import AsyncClient
 
-from app.models.models import User, Client, Case, Document
-from app.models.case_checklist_item import CaseChecklistItem, ChecklistItemStatus, MatchMethod
+from app.models.case_checklist_item import CaseChecklistItem, ChecklistItemStatus
+from app.models.models import Case, Client, Document, User
 
 
 @pytest_asyncio.fixture

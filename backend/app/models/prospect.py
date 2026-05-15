@@ -1,23 +1,21 @@
 """ORM models for leadgen/prospecting layer."""
 
 import enum
-from datetime import datetime
-from typing import Optional
-from uuid import UUID
 
 from sqlalchemy import (
-    Column,
-    String,
     Boolean,
-    Integer,
-    Text,
+    Column,
     DateTime,
     ForeignKey,
-    Numeric,
     Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -27,6 +25,7 @@ from app.models.models import Base
 # ---- Enums ----
 class SourceCategory(str, enum.Enum):
     """Категория источника."""
+
     GOVERNMENT = "government"
     WEBSITE = "website"
     ADS = "ads"
@@ -38,6 +37,7 @@ class SourceCategory(str, enum.Enum):
 
 class AcquisitionMode(str, enum.Enum):
     """Режим получения данных."""
+
     PARSED = "parsed"
     INBOUND = "inbound"
     MANUAL = "manual"
@@ -45,6 +45,7 @@ class AcquisitionMode(str, enum.Enum):
 
 class ProspectStatus(str, enum.Enum):
     """Статус prospect в воронке."""
+
     NEW = "new"
     ENRICHED = "enriched"
     CONTACTED = "contacted"
@@ -55,6 +56,7 @@ class ProspectStatus(str, enum.Enum):
 
 class Temperature(str, enum.Enum):
     """Температура prospect."""
+
     HOT = "hot"
     WARM = "warm"
     COLD = "cold"
@@ -62,6 +64,7 @@ class Temperature(str, enum.Enum):
 
 class DebtType(str, enum.Enum):
     """Тип долга."""
+
     CREDIT = "credit"
     TAX = "tax"
     ALIMONY = "alimony"
@@ -72,6 +75,7 @@ class DebtType(str, enum.Enum):
 
 class OutreachChannel(str, enum.Enum):
     """Канал outreach."""
+
     SMS = "sms"
     WHATSAPP = "whatsapp"
     TELEGRAM = "telegram"

@@ -113,7 +113,9 @@ services:
 
   # CRM Frontend (Next.js, port 3002)
   crm-frontend:
-    build: ./crm-frontend
+    build:
+      context: .
+      dockerfile: crm-frontend/Dockerfile
     ports:
       - "127.0.0.1:3002:3002"
     depends_on:
@@ -125,7 +127,9 @@ services:
 
   # Client LK Frontend (Next.js, port 3003)
   lk-frontend:
-    build: ./lk-frontend
+    build:
+      context: .
+      dockerfile: lk-frontend/Dockerfile
     ports:
       - "127.0.0.1:3003:3003"
     depends_on:
@@ -137,12 +141,14 @@ services:
 
   # Leadgen Frontend (Next.js, port 3004)
   leadgen-frontend:
-    build: ./leadgen-frontend
+    build:
+      context: .
+      dockerfile: leadgen-frontend/Dockerfile
     ports:
       - "127.0.0.1:3004:3004"
     depends_on:
       - backend
-      - leadgen
+
     environment:
       - NEXT_PUBLIC_API_URL=http://backend:8000
       - NEXT_PUBLIC_LEADGEN_API_URL=http://leadgen:8002

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import pytest
-from backend.app.services.completeness.matcher import DocumentMatcher
+from app.services.completeness.matcher import DocumentMatcher
 
 
 class TestDocumentMatcher:

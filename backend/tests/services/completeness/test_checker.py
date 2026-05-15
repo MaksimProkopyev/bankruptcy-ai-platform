@@ -4,9 +4,9 @@ from __future__ import annotations
 import uuid
 import pytest
 import pytest_asyncio
-from backend.app.services.completeness.checker import CompletenessChecker
-from backend.app.services.completeness.schemas import CompletenessItemUpdateRequest
-from backend.app.models.case_checklist_item import ChecklistItemStatus, MatchMethod
+from app.services.completeness.checker import CompletenessChecker
+from app.services.completeness.schemas import CompletenessItemUpdateRequest
+from app.models.case_checklist_item import ChecklistItemStatus, MatchMethod
 
 
 @pytest.mark.asyncio

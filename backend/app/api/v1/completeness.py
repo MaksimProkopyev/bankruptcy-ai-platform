@@ -158,7 +158,7 @@ async def update_item(
         ChecklistItemStatus.APPROVED,
         ChecklistItemStatus.REJECTED,
         ChecklistItemStatus.WAIVED,
-        ChecklistItemStatus.UNDER_REVIEW,
+        ChecklistItemStatus.REVIEW,
     ):
         reviewer_id = current_user.id
 

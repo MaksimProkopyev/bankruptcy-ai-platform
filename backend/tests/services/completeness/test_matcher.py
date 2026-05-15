@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 
 from app.services.completeness.matcher import DocumentMatcher
@@ -136,6 +138,7 @@ class TestDocumentMatcher:
         from unittest.mock import Mock
 
         doc = Mock()
+        doc.id = uuid.uuid4()
         doc.document_type = "passport"
         doc.file_name = "some_file.pdf"
 
@@ -149,6 +152,7 @@ class TestDocumentMatcher:
         from unittest.mock import Mock
 
         doc = Mock()
+        doc.id = uuid.uuid4()
         doc.document_type = None
         doc.file_name = "снилс_скан.jpg"
 
@@ -162,6 +166,7 @@ class TestDocumentMatcher:
         from unittest.mock import Mock
 
         doc = Mock()
+        doc.id = uuid.uuid4()
         doc.document_type = None
         doc.file_name = "random.jpg"
 

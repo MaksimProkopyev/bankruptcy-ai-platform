@@ -96,5 +96,3 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build backend image
         run: docker build -t bankruptcy-backend ./backend
-      - name: Build leadgen image
-        run: docker build -t bankruptcy-leadgen ./leadgen

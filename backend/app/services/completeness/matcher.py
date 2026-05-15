@@ -225,13 +225,13 @@ class DocumentMatcher:
 
         Returns: list of AutoMatchDetail.
         """
-        checklist = self.get_checklist(checklist_id)
+        self.get_checklist(checklist_id)  # validate checklist exists
         # Создаем копию множества для отслеживания использованных items
         used_items = set(existing_matches)
         matched_details = []
         matched_docs = set()
 
-        # Шаг 1: Exact match по document_type
+        # Шаг 1: Exact match по document_type (включая aliases)
         for doc in documents:
             if doc.id in matched_docs:
                 continue
@@ -239,21 +239,18 @@ class DocumentMatcher:
                 continue
 
             doc_type = doc.document_type.value if hasattr(doc.document_type, "value") else str(doc.document_type)
-            for item in checklist.items:
-                if item.id in used_items:
-                    continue
-                if item.id == doc_type:
-                    detail = AutoMatchDetail(
-                        checklist_item_id=item.id,
-                        document_id=doc.id,
-                        document_name=doc.file_name or "unknown",
-                        matched_by=MatchMethod.AUTO_TYPE,
-                        confidence=1.0,
-                    )
-                    matched_details.append(detail)
-                    used_items.add(item.id)
-                    matched_docs.add(doc.id)
-                    break
+            item_id = self.match_by_document_type(doc_type, checklist_id)
+            if item_id and item_id not in used_items:
+                detail = AutoMatchDetail(
+                    checklist_item_id=item_id,
+                    document_id=doc.id,
+                    document_name=doc.file_name or "unknown",
+                    matched_by=MatchMethod.AUTO_TYPE,
+                    confidence=1.0,
+                )
+                matched_details.append(detail)
+                used_items.add(item_id)
+                matched_docs.add(doc.id)
 
         # Шаг 2: Fuzzy match по filename
         for doc in documents:

@@ -67,6 +67,26 @@ async def list_prospects(
     )
 
 
+@router.get("/stats", response_model=ProspectStatsResponse, dependencies=[Depends(require_permission("leads", "read"))])
+async def get_stats(
+    db: AsyncSession = Depends(get_db),
+):
+    """Статистика."""
+    stats = await service.get_stats(db)
+    return ProspectStatsResponse(**stats)
+
+
+@router.get(
+    "/sources", response_model=list[SourceConfigResponse], dependencies=[Depends(require_permission("leads", "read"))]
+)
+async def list_sources(
+    db: AsyncSession = Depends(get_db),
+):
+    """Конфигурация источников."""
+    sources = await service.get_sources(db)
+    return sources
+
+
 @router.get(
     "/{prospect_id}", response_model=ProspectDetailResponse, dependencies=[Depends(require_permission("leads", "read"))]
 )
@@ -182,26 +202,6 @@ async def reject_prospect(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/stats", response_model=ProspectStatsResponse, dependencies=[Depends(require_permission("leads", "read"))])
-async def get_stats(
-    db: AsyncSession = Depends(get_db),
-):
-    """Статистика."""
-    stats = await service.get_stats(db)
-    return ProspectStatsResponse(**stats)
-
-
-@router.get(
-    "/sources", response_model=list[SourceConfigResponse], dependencies=[Depends(require_permission("leads", "read"))]
-)
-async def list_sources(
-    db: AsyncSession = Depends(get_db),
-):
-    """Конфигурация источников."""
-    sources = await service.get_sources(db)
-    return sources
 
 
 @router.patch(

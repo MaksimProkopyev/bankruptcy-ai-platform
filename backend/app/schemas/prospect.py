@@ -62,6 +62,7 @@ class ProspectResponse(BaseModel):
     utm_source: Optional[str]
     referral_code: Optional[str]
     converted_lead_id: Optional[UUID]
+    rejection_reason: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

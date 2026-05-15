@@ -30,7 +30,7 @@ def upgrade() -> None:
     # 2. Включить RLS на ключевых таблицах
     for table in ["cases", "documents", "payments", "messages",
                   "notifications", "deadlines", "case_events",
-                  "document_checklist", "creditors"]:
+                  "case_checklist_items", "creditors"]:
         conn.execute(sa.text(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;"))
         conn.execute(sa.text(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;"))
 
@@ -179,8 +179,8 @@ def upgrade() -> None:
             );
     """))
 
-    # 8. deadlines, case_events, document_checklist, creditors
-    for table in ["deadlines", "case_events", "document_checklist", "creditors"]:
+    # 8. deadlines, case_events, case_checklist_items, creditors
+    for table in ["deadlines", "case_events", "case_checklist_items", "creditors"]:
         conn.execute(sa.text(f"""
             CREATE POLICY {table}_by_case ON {table}
                 USING (
@@ -213,7 +213,7 @@ def downgrade() -> None:
 
     for table in ["cases", "documents", "payments", "messages",
                   "notifications", "deadlines", "case_events",
-                  "document_checklist", "creditors"]:
+                  "case_checklist_items", "creditors"]:
         conn.execute(sa.text(f"""
             DO $$ DECLARE r RECORD;
             BEGIN

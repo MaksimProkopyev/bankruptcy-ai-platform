@@ -102,8 +102,9 @@ async def seed():
 
         # 1. Admin user
         admin = User(
-            email="admin@bankruptcy.ai",
-            password_hash=hash_password("admin123"),
+            email="maksim.prokopiew@gmail.com",
+            phone="+79955426099",
+            password_hash=hash_password("Maks.26091991"),
             first_name="Администратор",
             last_name="Системы",
             role=UserRole.admin,
@@ -291,7 +292,7 @@ async def seed():
         print(f"Seeded: 1 admin, {len(LAWYERS)} lawyers, {len(MANAGERS)} managers, 1 AI engineer")
         print(f"Seeded: {len(CLIENTS_DATA)} clients with cases, creditors, events, deadlines, payments")
         print("\nLogin credentials:")
-        print("  Admin:   admin@bankruptcy.ai / admin123")
+        print("  Admin:   maksim.prokopiew@gmail.com / Maks.26091991")
         print("  Lawyer:  ivanov@bankruptcy.ai / lawyer123")
         print("  Manager: smirnova@bankruptcy.ai / manager123")
 

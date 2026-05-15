@@ -6,8 +6,8 @@ import pytest_asyncio
 from datetime import datetime, date
 from httpx import AsyncClient
 
-from backend.app.models.models import User, Client, Case, Document
-from backend.app.models.case_checklist_item import CaseChecklistItem, ChecklistItemStatus, MatchMethod
+from app.models.models import User, Client, Case, Document
+from app.models.case_checklist_item import CaseChecklistItem, ChecklistItemStatus, MatchMethod
 
 
 @pytest_asyncio.fixture

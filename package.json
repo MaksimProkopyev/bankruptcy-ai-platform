@@ -1,5 +1,11 @@
 {
   "name": "bankruptcy-ai-platform",
   "private": true,
-  "packageManager": "pnpm@9"
+  "packageManager": "pnpm@9",
+  "pnpm": {
+    "allowBuild": {
+      "sharp": true,
+      "unrs-resolver": true
+    }
+  }
 }

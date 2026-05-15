@@ -5,3 +5,6 @@ packages:
   - 'leadgen-frontend'
   - 'site-frontend'
   - 'staff-frontend'
+allowBuilds:
+  sharp: false
+  unrs-resolver: false

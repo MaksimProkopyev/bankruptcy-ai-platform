@@ -31,8 +31,9 @@ export function middleware(request: NextRequest) {
   const role: string = payload.role || "";
 
   // Admins and ops directors use the main CRM
+  const crmUrl = process.env.NEXT_PUBLIC_CRM_URL || "https://crm.nssb-maximum.ru";
   if (role === "admin" || role === "operations_director") {
-    return NextResponse.redirect("https://crm.nssb-maximum.ru");
+    return NextResponse.redirect(crmUrl);
   }
 
   // Clients have no access to staff portal

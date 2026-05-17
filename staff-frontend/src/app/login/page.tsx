@@ -6,6 +6,19 @@ import { useRouter } from "next/navigation";
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
+const CRM_URL =
+  process.env.NEXT_PUBLIC_CRM_URL || "https://crm.nssb-maximum.ru";
+
+const CRM_ROLES = ["admin", "operations_director"];
+
+function getRoleFromToken(token: string): string {
+  try {
+    return JSON.parse(atob(token.split(".")[1])).role || "";
+  } catch {
+    return "";
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -34,9 +47,15 @@ export default function LoginPage() {
       }
       const data = await res.json();
       const token: string = data.access_token;
-      // Save token as cookie
+      // Save token as cookie for same-origin use
       document.cookie = `staff_token=${encodeURIComponent(token)}; path=/; SameSite=Strict`;
-      router.push("/dashboard");
+      const role = getRoleFromToken(token);
+      if (CRM_ROLES.includes(role)) {
+        // Pass token via URL fragment — not sent to server, works cross-origin/subdomain
+        window.location.href = `${CRM_URL}/auth/sso#${encodeURIComponent(token)}`;
+      } else {
+        router.push("/dashboard");
+      }
     } catch {
       setError("Ошибка соединения с сервером");
     } finally {

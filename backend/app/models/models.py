@@ -134,6 +134,7 @@ class User(Base):
     role = Column(Enum(UserRole, native_enum=False), nullable=False)
     is_active = Column(Boolean, default=True)
     max_cases = Column(Integer)
+    permissions = Column(JSONB, nullable=False, server_default="[]")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

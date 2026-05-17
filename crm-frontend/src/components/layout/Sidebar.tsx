@@ -5,14 +5,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Дашборд", icon: "📊", staffOnly: false },
-  { href: "/cases", label: "Дела", icon: "📁", staffOnly: false },
-  { href: "/clients", label: "Клиенты", icon: "👤", staffOnly: false },
-  { href: "/deadlines", label: "Сроки", icon: "⏰", staffOnly: false },
-  { href: "/documents", label: "Документы", icon: "📄", staffOnly: false },
-  { href: "/analytics", label: "Аналитика", icon: "📈", staffOnly: false },
-  { href: "/billing", label: "Документы/Счета", icon: "📝", staffOnly: false },
-  { href: "/settings", label: "Настройки", icon: "⚙️", staffOnly: false },
+  { href: "/dashboard", label: "Дашборд", icon: "📊", staffOnly: false, exact: false },
+  { href: "/cases", label: "Дела", icon: "📁", staffOnly: false, exact: false },
+  { href: "/clients", label: "Клиенты", icon: "👤", staffOnly: false, exact: false },
+  { href: "/deadlines", label: "Сроки", icon: "⏰", staffOnly: false, exact: false },
+  { href: "/documents", label: "Документы", icon: "📄", staffOnly: false, exact: true },
+  { href: "/documents/library", label: "Библиотека", icon: "🗂️", staffOnly: false, exact: false },
+  { href: "/analytics", label: "Аналитика", icon: "📈", staffOnly: false, exact: false },
+  { href: "/billing", label: "Документы/Счета", icon: "📝", staffOnly: false, exact: false },
+  { href: "/settings", label: "Настройки", icon: "⚙️", staffOnly: false, exact: false },
 ];
 
 function getCookie(name: string): string {
@@ -63,6 +64,8 @@ export default function Sidebar() {
         }).map((item) => {
           const isActive = item.href === "/dashboard"
             ? pathname === "/" || pathname.startsWith("/dashboard")
+            : item.exact
+            ? pathname === item.href
             : pathname.startsWith(item.href);
           return (
             <Link

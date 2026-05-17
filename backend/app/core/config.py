@@ -25,11 +25,21 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     OPENAI_API_KEY: str = ""  # fallback
 
-    # File storage (S3-compatible)
+    # File storage (S3-compatible, legacy local)
     S3_ENDPOINT: str = "http://localhost:9000"
     S3_ACCESS_KEY: str = "minio"
     S3_SECRET_KEY: str = "minio123"
     S3_BUCKET: str = "bankruptcy-documents"
+
+    # Yandex Object Storage (knowledge base)
+    YC_ACCESS_KEY: str = ""
+    YC_SECRET_KEY: str = ""
+    YC_ENDPOINT_URL: str = "https://storage.yandexcloud.net"
+    YC_BUCKET_NAME: str = "bankruptcy-ai-knowledge"
+    YC_PRESIGNED_URL_TTL: int = 3600
+
+    # Internal service auth
+    INTERNAL_SECRET: str = "change-me-internal-secret"
 
     # CORS
     CORS_ORIGINS: list[str] = [

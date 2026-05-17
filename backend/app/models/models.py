@@ -76,17 +76,36 @@ class DocumentType(str, enum.Enum):
     passport = "passport"
     snils = "snils"
     inn_cert = "inn_cert"
+    marriage_cert = "marriage_cert"
+    divorce_cert = "divorce_cert"
+    birth_cert = "birth_cert"
+    prenuptial_agreement = "prenuptial_agreement"
     income_2ndfl = "income_2ndfl"
+    income_cert = "income_cert"
     bank_statement = "bank_statement"
     credit_report = "credit_report"
     credit_contract = "credit_contract"
+    payment_schedule = "payment_schedule"
     egrn_extract = "egrn_extract"
     vehicle_title = "vehicle_title"
+    property_valuation = "property_valuation"
+    court_decision = "court_decision"
+    enforcement_order = "enforcement_order"
     bankruptcy_application = "bankruptcy_application"
     court_ruling = "court_ruling"
     petition = "petition"
+    objection = "objection"
     creditors_registry = "creditors_registry"
     fu_report = "fu_report"
+    asset_inventory = "asset_inventory"
+    efrsb_publication = "efrsb_publication"
+    kommersant_publication = "kommersant_publication"
+    employment_cert = "employment_cert"
+    unemployment_cert = "unemployment_cert"
+    family_composition = "family_composition"
+    power_of_attorney = "power_of_attorney"
+    contract_with_client = "contract_with_client"
+    invoice = "invoice"
     other = "other"
 
 
@@ -230,7 +249,7 @@ class Document(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     case_id = Column(UUID(as_uuid=True), ForeignKey("cases.id", ondelete="CASCADE"), nullable=False)
-    document_type = Column(Enum(DocumentType, native_enum=False), nullable=False)
+    document_type = Column(Enum(DocumentType, name="document_type", native_enum=True, create_type=False), nullable=False)
     status = Column(Enum(DocumentStatus, native_enum=False), default=DocumentStatus.pending)
     file_name = Column(String(255))
     file_path = Column(String(500))
@@ -361,7 +380,7 @@ class Message(Base):
     channel = Column(String(20), nullable=False, default="chat")
     direction = Column(String(10), nullable=False)  # inbound, outbound
     content = Column(Text, nullable=False)
-    metadata_json = Column(JSONB)
+    metadata_json = Column("metadata", JSONB)
     is_ai_generated = Column(Boolean, default=False)
     ai_agent_name = Column(String(100))
     is_ai_handled = Column(Boolean, default=False)

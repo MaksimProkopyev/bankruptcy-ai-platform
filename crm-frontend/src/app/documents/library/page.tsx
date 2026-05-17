@@ -301,7 +301,7 @@ export default function LibraryPage() {
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
+            className="h-10 px-3 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
           >
             {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
               <option key={val} value={val}>{label}</option>
@@ -314,7 +314,7 @@ export default function LibraryPage() {
           <select
             value={clientType}
             onChange={(e) => setClientType(e.target.value)}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
+            className="h-10 px-3 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
           >
             {Object.entries(CLIENT_TYPE_LABELS)
               .filter(([val]) => val !== "all")
@@ -324,13 +324,16 @@ export default function LibraryPage() {
           </select>
         </div>
 
-        <input
-          type="text"
-          placeholder="Поиск по названию..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white flex-1 min-w-[180px]"
-        />
+        <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
+          <label className="text-xs text-gray-400 font-medium opacity-0 select-none">Поиск</label>
+          <input
+            type="text"
+            placeholder="Поиск по названию..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-10 px-3 text-sm border border-gray-200 rounded-lg bg-white w-full"
+          />
+        </div>
       </div>
 
       {error && (

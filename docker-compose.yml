@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: bankruptcy_ai
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "2006b32a9ea3a6037f36aace561a4f65e6f3df938af0f2eb25f769324175ff73D"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
@@ -33,8 +33,8 @@ services:
     image: minio/minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio123
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
@@ -57,10 +57,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:2006b32a9ea3a6037f36aace561a4f65e6f3df938af0f2eb25f769324175ff73@postgres:5432/bankruptcy_ai
-      REDIS_URL: redis://:8024286e2b373c4df9ea95d33c9d737bbde6d3bc@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
       S3_ENDPOINT: http://minio:9000
     depends_on:
       postgres:
@@ -69,7 +69,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   # AI Core service
   ai-core:
@@ -79,8 +79,8 @@ services:
     ports:
       - "8001:8001"
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:2006b32a9ea3a6037f36aace561a4f65e6f3df938af0f2eb25f769324175ff73@postgres:5432/bankruptcy_ai
-      REDIS_URL: redis://:8024286e2b373c4df9ea95d33c9d737bbde6d3bc@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GIGACHAT_API_KEY: ${GIGACHAT_API_KEY}
@@ -101,15 +101,12 @@ services:
       context: ./site-frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
     depends_on:
       - backend
-    volumes:
-      - ./site-frontend:/app
-      - /app/node_modules
-    command: npm run dev
+    command: npm run start
 
   # CRM Frontend (Next.js, port 3002)
   crm-frontend:
@@ -122,7 +119,6 @@ services:
       - backend
     environment:
       - NEXT_PUBLIC_API_URL=http://backend:8000
-      - JWT_SECRET=${JWT_SECRET}
     restart: unless-stopped
 
   # Client LK Frontend (Next.js, port 3003)
@@ -136,7 +132,6 @@ services:
       - backend
     environment:
       - NEXT_PUBLIC_API_URL=http://backend:8000
-      - JWT_SECRET=${JWT_SECRET}
     restart: unless-stopped
 
   # Leadgen Frontend (Next.js, port 3004)
@@ -152,7 +147,6 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://backend:8000
       - NEXT_PUBLIC_LEADGEN_API_URL=http://leadgen:8002
-      - JWT_SECRET=${JWT_SECRET}
     restart: unless-stopped
 
   # Staff Portal (Next.js, port 3001)
@@ -161,7 +155,7 @@ services:
       context: ./staff-frontend
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     environment:
       NEXT_PUBLIC_API_URL: http://backend:8000/api/v1
     depends_on:
@@ -174,8 +168,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:2006b32a9ea3a6037f36aace561a4f65e6f3df938af0f2eb25f769324175ff73@postgres:5432/bankruptcy_ai
-      REDIS_URL: redis://:8024286e2b373c4df9ea95d33c9d737bbde6d3bc@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
       AI_CORE_URL: http://ai-core:8001
     depends_on:
       postgres:
@@ -194,8 +188,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:2006b32a9ea3a6037f36aace561a4f65e6f3df938af0f2eb25f769324175ff73@postgres:5432/bankruptcy_ai
-      REDIS_URL: redis://:8024286e2b373c4df9ea95d33c9d737bbde6d3bc@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
       LEAD_COLLECTOR_MOCK_MODE: ${LEAD_COLLECTOR_MOCK_MODE:-true}
       FSSP_API_URL: ${FSSP_API_URL:-}
       FSSP_API_KEY: ${FSSP_API_KEY:-}
@@ -221,8 +215,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:2006b32a9ea3a6037f36aace561a4f65e6f3df938af0f2eb25f769324175ff73@postgres:5432/bankruptcy_ai
-      REDIS_URL: redis://:8024286e2b373c4df9ea95d33c9d737bbde6d3bc@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
       LEAD_OUTREACH_DRY_RUN: ${LEAD_OUTREACH_DRY_RUN:-true}
       LEAD_OUTREACH_SMS_API_URL: ${LEAD_OUTREACH_SMS_API_URL:-}
       LEAD_OUTREACH_SMS_API_KEY: ${LEAD_OUTREACH_SMS_API_KEY:-}

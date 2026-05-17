@@ -395,11 +395,11 @@ export default function LibraryPage() {
                         CATEGORY_BADGE[doc.category] ?? "bg-gray-100 text-gray-600"
                       }`}
                     >
-                      {CATEGORY_LABELS[doc.category] ?? doc.category || "—"}
+                      {(CATEGORY_LABELS[doc.category] ?? doc.category) || "—"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
-                    {CLIENT_TYPE_LABELS[doc.client_type] ?? doc.client_type || "—"}
+                    {(CLIENT_TYPE_LABELS[doc.client_type] ?? doc.client_type) || "—"}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
                     {formatBytes(doc.size)}

@@ -15,6 +15,7 @@ from app.api.v1 import (
     completeness,
     documents,
     lead_sources,
+    library,
     notifications,
     prospects,
     staff,
@@ -48,7 +49,10 @@ api_router.include_router(client_cabinet.router, prefix="/cabinet", tags=["clien
 # Anticollector (public — no auth needed for registration)
 api_router.include_router(anticollector.router, prefix="/anticollector", tags=["anticollector"])
 
-# Object Storage — document library
+# Document library (knowledge base — Yandex Object Storage)
+api_router.include_router(library.router, prefix="/library", tags=["library"])
+
+# Object Storage — document library (legacy)
 api_router.include_router(storage.router, prefix="/storage", tags=["storage"])
 
 # Internal endpoints — AI agent access (secret-based auth, no JWT)

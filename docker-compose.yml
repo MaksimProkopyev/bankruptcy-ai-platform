@@ -73,6 +73,31 @@ services:
       - ./backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
+  # Leadgen Service (FastAPI, port 8002)
+  leadgen:
+    build:
+      context: ./leadgen
+      dockerfile: Dockerfile
+    container_name: bankruptcy-leadgen
+    ports:
+      - "127.0.0.1:8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379/2
+      - CRM_INTERNAL_URL=http://backend:8000
+      - AI_STUDIO_URL=http://ai-core:8001
+      - AI_STUDIO_WEBHOOK_SECRET=${AI_STUDIO_WEBHOOK_SECRET:-}
+      - GREEN_API_TOKEN=${GREEN_API_TOKEN:-}
+      - VK_API_TOKEN=${VK_API_TOKEN:-}
+      - META_VERIFY_TOKEN=${META_VERIFY_TOKEN:-}
+      - META_ACCESS_TOKEN=${META_ACCESS_TOKEN:-}
+    restart: unless-stopped
+
   # AI Core service
   ai-core:
     build:

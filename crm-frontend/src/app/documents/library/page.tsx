@@ -25,8 +25,12 @@ interface LibraryDocument {
 const CATEGORY_LABELS: Record<string, string> = {
   "": "Все",
   template: "Шаблоны",
+  faq: "FAQ / Кейсы",
+  sop: "SOP / Регламенты",
+  checklist: "Чек-листы / Памятки",
+  reference: "Справочники",
   rag: "RAG",
-  sop: "Регламенты",
+  other: "Прочее",
 };
 
 const CLIENT_TYPE_LABELS: Record<string, string> = {
@@ -40,8 +44,12 @@ const CLIENT_TYPE_LABELS: Record<string, string> = {
 
 const CATEGORY_BADGE: Record<string, string> = {
   template: "bg-blue-100 text-blue-700",
-  rag: "bg-purple-100 text-purple-700",
+  faq: "bg-indigo-100 text-indigo-700",
   sop: "bg-green-100 text-green-700",
+  checklist: "bg-yellow-100 text-yellow-700",
+  reference: "bg-orange-100 text-orange-700",
+  rag: "bg-purple-100 text-purple-700",
+  other: "bg-gray-100 text-gray-600",
 };
 
 // ---------------------------------------------------------------------------
@@ -268,16 +276,6 @@ export default function LibraryPage() {
     window.open(doc.download_url, "_blank");
   }
 
-  async function handleDelete(doc: LibraryDocument) {
-    if (!confirm(`Удалить «${doc.display_name}»?`)) return;
-    try {
-      await apiFetch(`/library/?key=${encodeURIComponent(doc.key)}`, { method: "DELETE" });
-      setDocs((prev) => prev.filter((d) => d.key !== doc.key));
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
   return (
     <div>
       {/* Header */}
@@ -408,21 +406,12 @@ export default function LibraryPage() {
                     {new Date(doc.updated_at).toLocaleDateString("ru-RU")}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleDownload(doc)}
-                        className="text-xs px-3 py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
-                      >
-                        Скачать
-                      </button>
-                      <button
-                        onClick={() => handleDelete(doc)}
-                        className="text-xs px-2 py-1 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                        title="Удалить"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleDownload(doc)}
+                      className="text-xs px-3 py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                    >
+                      Скачать
+                    </button>
                   </td>
                 </tr>
               ))

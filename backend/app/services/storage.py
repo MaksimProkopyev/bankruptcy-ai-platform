@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import mimetypes
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
@@ -17,6 +18,62 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from app.core.config import settings
+
+
+# Word-boundary patterns for Russian acronyms ИП and КО.
+# Preceding char: start, space, slash, dash, underscore, colon, em-dash, «
+# Following char:  end,   space, slash, dash, underscore, colon, em-dash, dot, »
+_RE_KO = re.compile(r'(?:^|[\s/\-_:—«])КО(?:[\s/\-_:—.»]|$)')
+_RE_IP = re.compile(r'(?:^|[\s/\-_:—«])ИП(?:[\s/\-_:—.»]|$)')
+
+
+def parse_path_metadata(key: str) -> dict:
+    """
+    Derive category and client_type from the S3 object key (path).
+    Used when the object has no x-amz-meta-category / client-type metadata.
+
+    Bucket folder structure → category:
+        FAQ и кейсы/…                          → faq
+        Внутренние документы/SOP/               → sop
+        Внутренние документы/Регламенты/        → sop
+        Внутренние документы/Справочники/       → reference
+        Клиентские документы/Чек-листы/         → checklist
+        Клиентские документы/Памятки/           → checklist
+        Клиентские документы/Анкеты/ | Договоры → template
+        Процессуальные документы/…              → template
+    """
+    parts = key.split("/")
+    # Join all folder segments (not the filename) for keyword search
+    folders_lower = " ".join(parts[:-1]).lower()
+    key_lower = key.lower()
+
+    # ---- category ----
+    if "faq" in folders_lower or "кейс" in folders_lower:
+        category = "faq"
+    elif "sop" in folders_lower or "регламент" in folders_lower:
+        category = "sop"
+    elif "справочник" in folders_lower:
+        category = "reference"
+    elif "чек-лист" in folders_lower or "памятк" in folders_lower:
+        category = "checklist"
+    else:
+        # Процессуальные / Клиентские (Анкеты, Договоры) → template
+        category = "template"
+
+    # ---- client_type ----
+    # Check in order: КО → физлица → юрлица → ИП → all
+    if _RE_KO.search(key) or "кредитн" in key_lower:
+        client_type = "credit_organization"
+    elif "физлиц" in key_lower or "физическ" in key_lower or "гражданин" in key_lower:
+        client_type = "individual"
+    elif "юрлиц" in key_lower or "юридическ" in key_lower:
+        client_type = "legal_entity"
+    elif _RE_IP.search(key) or "индивидуальн" in key_lower:
+        client_type = "sole_proprietor"
+    else:
+        client_type = "all"
+
+    return {"category": category, "client_type": client_type}
 
 
 @dataclass
@@ -111,6 +168,7 @@ class YOSService:
                 except ClientError:
                     meta = {}
                 filename = key.split("/")[-1]
+                parsed = parse_path_metadata(key)
                 docs.append(
                     LibraryDoc(
                         key=key,
@@ -120,11 +178,15 @@ class YOSService:
                             or meta.get("name")
                             or filename
                         ),
-                        category=meta.get("category", ""),
+                        category=(
+                            meta.get("category")
+                            or parsed["category"]
+                        ),
                         client_type=(
                             meta.get("client-type")
                             or meta.get("client_type")
-                            or meta.get("client_scope", "")
+                            or meta.get("client_scope")
+                            or parsed["client_type"]
                         ),
                         size=obj.get("Size", 0),
                         updated_at=obj.get("LastModified", datetime.utcnow()),

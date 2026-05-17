@@ -62,6 +62,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       S3_ENDPOINT: http://minio:9000
+      SECRET_KEY: ${JWT_SECRET}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
     depends_on:
       postgres:
         condition: service_healthy

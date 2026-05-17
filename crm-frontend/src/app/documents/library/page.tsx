@@ -334,9 +334,9 @@ export default function LibraryPage() {
       )}
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-y-auto max-h-[calc(100vh-240px)]">
         <table className="w-full">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr className="bg-[#1B3A5C]">
               <th className="text-left px-4 py-3 text-xs font-medium text-white/60 uppercase tracking-wide">
                 Название

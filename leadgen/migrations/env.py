@@ -28,6 +28,9 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+LEADGEN_VERSION_TABLE = "leadgen_alembic_version"
+
+
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -35,6 +38,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         include_schemas=True,
+        version_table=LEADGEN_VERSION_TABLE,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -45,6 +49,7 @@ def do_run_migrations(connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         include_schemas=True,
+        version_table=LEADGEN_VERSION_TABLE,
     )
     with context.begin_transaction():
         context.run_migrations()

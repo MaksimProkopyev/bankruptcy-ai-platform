@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMPTZ, UUID
+from sqlalchemy import Column, DateTime, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from leadgen.database import Base
@@ -17,7 +17,7 @@ class QualificationTask(Base):
     status = Column(Text, default="pending")
     ai_studio_task_id = Column(Text)
     result = Column(JSONB)
-    created_at = Column(TIMESTAMPTZ, default=datetime.utcnow)
-    completed_at = Column(TIMESTAMPTZ)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    completed_at = Column(DateTime(timezone=True))
 
     lead = relationship("Lead", back_populates="qualification_tasks")

@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMPTZ, UUID
+from sqlalchemy import Column, DateTime, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from leadgen.database import Base
@@ -23,9 +23,9 @@ class Prospect(Base):
     lead_id = Column(UUID(as_uuid=True), ForeignKey("leadgen.leads.id"), unique=True)
     qualification_data = Column(JSONB, nullable=False)
     confirmed_by = Column(UUID(as_uuid=True))
-    confirmed_at = Column(TIMESTAMPTZ)
+    confirmed_at = Column(DateTime(timezone=True))
     crm_client_id = Column(UUID(as_uuid=True))
     status = Column(Text, default=ProspectStatus.PENDING)
-    created_at = Column(TIMESTAMPTZ, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     lead = relationship("Lead", back_populates="prospect")

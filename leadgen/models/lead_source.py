@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, Text
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMPTZ, UUID
+from sqlalchemy import Column, DateTime, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from leadgen.database import Base
@@ -19,6 +19,6 @@ class LeadSource(Base):
     phone = Column(Text)
     email = Column(Text)
     meta = Column(JSONB, default=dict)
-    created_at = Column(TIMESTAMPTZ, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     leads = relationship("Lead", back_populates="source")

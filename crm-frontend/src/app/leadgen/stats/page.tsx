@@ -24,7 +24,7 @@ export default function StatsPage() {
       <div className="grid grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Всего лидов', value: stats.total_leads },
-          { label: 'Конверсия', value: `${(stats.conversion_rate * 100).toFixed(1)}%` },
+          { label: 'Конверсия', value: `${stats.conversion_rate_pct.toFixed(1)}%` },
           {
             label: 'Среднее время квалификации',
             value: stats.avg_qualification_hours

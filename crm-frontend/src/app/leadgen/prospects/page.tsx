@@ -10,7 +10,7 @@ export default function ProspectsPage() {
   const load = async () => {
     setLoading(true)
     const data = await leadgenApi.getProspects()
-    setProspects(data.prospects)
+    setProspects(data)
     setLoading(false)
   }
 

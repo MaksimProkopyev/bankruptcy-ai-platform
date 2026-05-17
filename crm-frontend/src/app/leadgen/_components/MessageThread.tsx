@@ -1,3 +1,4 @@
+'use client'
 import { LeadMessage } from '@/lib/leadgen-api'
 import { useEffect, useRef } from 'react'
 

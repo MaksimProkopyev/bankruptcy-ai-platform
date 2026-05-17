@@ -20,7 +20,7 @@ export default function LeadgenPage() {
     setLoading(true)
     try {
       const data = await leadgenApi.getLeads()
-      setLeads(data.leads)
+      setLeads(data.items)
     } finally {
       setLoading(false)
     }

@@ -28,7 +28,7 @@ export default function LeadDetailPage() {
       leadgenApi.getMessages(id),
     ])
     setLead(l)
-    setMessages(m.messages)
+    setMessages(m)
     setLoading(false)
   }
 

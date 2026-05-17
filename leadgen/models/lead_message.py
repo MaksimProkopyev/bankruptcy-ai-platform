@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMPTZ, UUID
+from sqlalchemy import Column, DateTime, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from leadgen.database import Base
@@ -19,7 +19,7 @@ class LeadMessage(Base):
     content = Column(Text, nullable=False)
     content_type = Column(Text, default="text")
     external_id = Column(Text)
-    sent_at = Column(TIMESTAMPTZ, default=datetime.utcnow)
+    sent_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     meta = Column(JSONB, default=dict)
 
     lead = relationship("Lead", back_populates="messages")

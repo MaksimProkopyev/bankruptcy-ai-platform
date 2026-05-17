@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, Numeric, Text
-from sqlalchemy.dialects.postgresql import TIMESTAMPTZ, UUID
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from leadgen.database import Base
@@ -41,9 +41,9 @@ class Lead(Base):
     has_income = Column(Boolean)
     qualification_score = Column(Integer)
     disqualify_reason = Column(Text)
-    created_at = Column(TIMESTAMPTZ, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMPTZ, default=datetime.utcnow, onupdate=datetime.utcnow)
-    converted_at = Column(TIMESTAMPTZ)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    converted_at = Column(DateTime(timezone=True))
     crm_client_id = Column(UUID(as_uuid=True))
 
     source = relationship("LeadSource", back_populates="leads")

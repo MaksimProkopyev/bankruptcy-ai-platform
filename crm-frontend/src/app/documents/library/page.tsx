@@ -48,9 +48,13 @@ const CATEGORY_BADGE: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getToken(): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem("token") || "";
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const ls = localStorage.getItem("token");
+  if (ls) return ls;
+  // Fallback: read from cookie (set by SSO and login pages)
+  const match = document.cookie.match(/(^| )staff_token=([^;]+)/);
+  return match ? decodeURIComponent(match[2]) : null;
 }
 
 function formatBytes(bytes: number): string {
@@ -61,14 +65,19 @@ function formatBytes(bytes: number): string {
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      ...(init?.headers || {}),
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
   if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      document.cookie = "staff_token=; path=/; max-age=0";
+      window.location.href = "/login";
+    }
     const err = await res.json().catch(() => ({ detail: "Ошибка запроса" }));
     throw new Error(err.detail || "Ошибка запроса");
   }
@@ -234,6 +243,10 @@ export default function LibraryPage() {
   const [showUpload, setShowUpload] = useState(false);
 
   function fetchDocs() {
+    if (!getToken()) {
+      window.location.href = "/login";
+      return;
+    }
     const params = new URLSearchParams();
     if (category) params.set("category", category);
     if (clientType) params.set("client_type", clientType);

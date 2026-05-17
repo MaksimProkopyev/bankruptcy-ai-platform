@@ -295,28 +295,34 @@ export default function LibraryPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
-        >
-          {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
-          ))}
-        </select>
-
-        <select
-          value={clientType}
-          onChange={(e) => setClientType(e.target.value)}
-          className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
-        >
-          {Object.entries(CLIENT_TYPE_LABELS)
-            .filter(([val]) => val !== "all")
-            .map(([val, label]) => (
+      <div className="flex flex-wrap gap-3 items-end mb-6">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-gray-400 font-medium">Категория</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
+          >
+            {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
               <option key={val} value={val}>{label}</option>
             ))}
-        </select>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-gray-400 font-medium">Тип клиента</label>
+          <select
+            value={clientType}
+            onChange={(e) => setClientType(e.target.value)}
+            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
+          >
+            {Object.entries(CLIENT_TYPE_LABELS)
+              .filter(([val]) => val !== "all")
+              .map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+          </select>
+        </div>
 
         <input
           type="text"

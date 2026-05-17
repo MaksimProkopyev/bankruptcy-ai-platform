@@ -25,8 +25,8 @@ function getStaffToken(request: NextRequest): string | undefined {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isLoginPage = pathname === "/login" || pathname.startsWith("/login/");
-  if (isLoginPage) return NextResponse.next();
+  const isPublic = pathname === "/login" || pathname.startsWith("/login/") || pathname === "/auth/sso";
+  if (isPublic) return NextResponse.next();
 
   // CRM block — auth check for all protected routes
   const token = getStaffToken(request);

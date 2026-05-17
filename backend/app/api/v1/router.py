@@ -18,6 +18,7 @@ from app.api.v1 import (
     notifications,
     prospects,
     staff,
+    storage,
     users,
 )
 
@@ -46,3 +47,9 @@ api_router.include_router(client_cabinet.router, prefix="/cabinet", tags=["clien
 
 # Anticollector (public — no auth needed for registration)
 api_router.include_router(anticollector.router, prefix="/anticollector", tags=["anticollector"])
+
+# Object Storage — document library
+api_router.include_router(storage.router, prefix="/storage", tags=["storage"])
+
+# Internal endpoints — AI agent access (secret-based auth, no JWT)
+api_router.include_router(storage.internal_router, prefix="/internal", tags=["internal"])

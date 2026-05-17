@@ -40,3 +40,4 @@ __pycache__/
 *.pyc
 .venv/
 docker-compose.yml.save
+bankruptcy-ai-platform/

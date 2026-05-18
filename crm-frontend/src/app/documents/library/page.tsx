@@ -24,11 +24,13 @@ interface LibraryDocument {
 
 const CATEGORY_LABELS: Record<string, string> = {
   "": "Все",
-  template: "Шаблоны",
-  faq: "FAQ / Кейсы",
-  sop: "SOP / Регламенты",
-  checklist: "Чек-листы / Памятки",
+  faq: "FAQ",
+  case: "Кейсы",
+  sop: "SOP",
+  regulation: "Регламенты",
+  checklist: "Чек-листы",
   reference: "Справочники",
+  template: "Шаблоны",
   rag: "RAG",
   other: "Прочее",
 };
@@ -43,12 +45,14 @@ const CLIENT_TYPE_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_BADGE: Record<string, string> = {
-  template: "bg-blue-100 text-blue-700",
-  faq: "bg-indigo-100 text-indigo-700",
+  faq: "bg-blue-100 text-blue-700",
+  case: "bg-purple-100 text-purple-700",
   sop: "bg-green-100 text-green-700",
-  checklist: "bg-yellow-100 text-yellow-700",
-  reference: "bg-orange-100 text-orange-700",
-  rag: "bg-purple-100 text-purple-700",
+  regulation: "bg-teal-100 text-teal-700",
+  checklist: "bg-orange-100 text-orange-700",
+  reference: "bg-yellow-100 text-yellow-700",
+  template: "bg-indigo-100 text-indigo-700",
+  rag: "bg-violet-100 text-violet-700",
   other: "bg-gray-100 text-gray-600",
 };
 

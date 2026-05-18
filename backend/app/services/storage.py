@@ -32,10 +32,11 @@ def parse_path_metadata(key: str) -> dict:
     Derive category and client_type from the S3 object key (path).
     Used when the object has no x-amz-meta-category / client-type metadata.
 
-    Bucket folder structure → category:
-        FAQ и кейсы/…                          → faq
+    Bucket folder structure → category (uses both top and sub folder):
+        FAQ и кейсы/FAQ/…                       → faq
+        FAQ и кейсы/Кейсы/…                     → case
         Внутренние документы/SOP/               → sop
-        Внутренние документы/Регламенты/        → sop
+        Внутренние документы/Регламенты/        → regulation
         Внутренние документы/Справочники/       → reference
         Клиентские документы/Чек-листы/         → checklist
         Клиентские документы/Памятки/           → checklist
@@ -43,22 +44,33 @@ def parse_path_metadata(key: str) -> dict:
         Процессуальные документы/…              → template
     """
     parts = key.split("/")
-    # Join all folder segments (not the filename) for keyword search
-    folders_lower = " ".join(parts[:-1]).lower()
+    top = parts[0].lower() if len(parts) > 0 else ""
+    sub = parts[1].lower() if len(parts) > 2 else ""  # second folder, only when ≥3 parts
     key_lower = key.lower()
 
-    # ---- category ----
-    if "faq" in folders_lower or "кейс" in folders_lower:
-        category = "faq"
-    elif "sop" in folders_lower or "регламент" in folders_lower:
-        category = "sop"
-    elif "справочник" in folders_lower:
-        category = "reference"
-    elif "чек-лист" in folders_lower or "памятк" in folders_lower:
-        category = "checklist"
-    else:
-        # Процессуальные / Клиентские (Анкеты, Договоры) → template
+    # ---- category (sub-folder takes priority for disambiguation) ----
+    if "faq" in top or "кейс" in top:
+        # Distinguish FAQ articles from case studies by second-level folder
+        if "кейс" in sub:
+            category = "case"
+        else:
+            category = "faq"
+    elif "внутренние" in top or "sop" in top:
+        if "регламент" in sub:
+            category = "regulation"
+        elif "справочник" in sub:
+            category = "reference"
+        else:
+            category = "sop"  # SOP subfolder or top-level SOP
+    elif "клиентские" in top:
+        if "чек-лист" in sub or "памятк" in sub:
+            category = "checklist"
+        else:
+            category = "template"  # Анкеты, Договоры
+    elif "процессуальн" in top:
         category = "template"
+    else:
+        category = "other"
 
     # ---- client_type ----
     # Check in order: КО → физлица → юрлица → ИП → all

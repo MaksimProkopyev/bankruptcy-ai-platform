@@ -1,12 +1,11 @@
 """Analytics API — dashboards, reports, unit economics."""
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import require_permission
 from app.db.session import get_db
-from app.models.models import Case, Payment
 
 router = APIRouter()
 
@@ -38,13 +37,16 @@ async def get_unit_economics(db: AsyncSession = Depends(get_db)):
 @router.get("/summary", dependencies=[Depends(require_permission("analytics", "read"))])
 async def get_dashboard_summary(db: AsyncSession = Depends(get_db)):
     """High-level dashboard numbers."""
-    total = await db.execute(select(func.count(Case.id)))
-    active = await db.execute(
-        select(func.count(Case.id)).where(Case.status.not_in(["rejected", "cancelled", "debt_discharged"]))
-    )
-    revenue = await db.execute(select(func.sum(Payment.amount)).where(Payment.status == "paid"))
+    total_r = await db.execute(text("SELECT COUNT(*) FROM cases"))
+    active_r = await db.execute(text(
+        "SELECT COUNT(*) FROM cases"
+        " WHERE status NOT IN ('rejected', 'cancelled', 'debt_discharged')"
+    ))
+    revenue_r = await db.execute(text(
+        "SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'paid'"
+    ))
     return {
-        "total_cases": total.scalar_one(),
-        "active_cases": active.scalar_one(),
-        "total_revenue": float(revenue.scalar_one() or 0),
+        "total_cases": total_r.scalar_one(),
+        "active_cases": active_r.scalar_one(),
+        "total_revenue": float(revenue_r.scalar_one()),
     }

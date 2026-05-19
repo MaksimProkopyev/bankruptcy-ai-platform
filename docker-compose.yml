@@ -64,6 +64,13 @@ services:
       S3_ENDPOINT: http://minio:9000
       SECRET_KEY: ${JWT_SECRET}
       INTERNAL_SECRET: ${INTERNAL_SECRET}
+      YOS_ACCESS_KEY: ${YOS_ACCESS_KEY}
+      YOS_SECRET_KEY: ${YOS_SECRET_KEY}
+      YOS_ENDPOINT: ${YOS_ENDPOINT:-https://storage.yandexcloud.net}
+      YOS_REGION: ${YOS_REGION:-ru-central1}
+      YOS_BUCKET_LIBRARY: ${YOS_BUCKET_LIBRARY:-bankruptcy-ai-knowledge}
+      YOS_BUCKET_CLIENTS: ${YOS_BUCKET_CLIENTS:-bfl-crm-clients-nocodb-prod}
+      CORS_ORIGINS: '["https://crm.nssb-maximum.ru","https://api.nssb-maximum.ru","https://staff.nssb-maximum.ru","https://lk.nssb-maximum.ru","https://leadgen.nssb-maximum.ru","http://localhost:3000","http://localhost:8000"]'
     depends_on:
       postgres:
         condition: service_healthy

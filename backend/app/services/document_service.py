@@ -120,7 +120,7 @@ class DocumentService:
         self.db = db
 
     async def list_templates(self, category: str | None = None) -> list[DocumentTemplate]:
-        query = select(DocumentTemplate).where(DocumentTemplate.is_active)
+        query = select(DocumentTemplate).where(DocumentTemplate.is_active == True)  # noqa: E712
         if category:
             query = query.where(DocumentTemplate.category == category)
         result = await self.db.execute(query.order_by(DocumentTemplate.name))

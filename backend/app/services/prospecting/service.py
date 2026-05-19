@@ -202,9 +202,9 @@ class ProspectingService:
             )
 
         # Общее количество
-        count_query = select(func.count()).select_from(query.subquery())
+        count_query = query.with_only_columns(func.count(Prospect.id)).order_by(None)
         total_result = await db.execute(count_query)
-        total = total_result.scalar()
+        total = total_result.scalar_one()
 
         # Пагинация
         query = query.order_by(Prospect.created_at.desc())

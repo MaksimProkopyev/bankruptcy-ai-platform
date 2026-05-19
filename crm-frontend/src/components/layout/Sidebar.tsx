@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: "/leadgen", label: "Лиды", icon: "👥", staffOnly: true, exact: false },
   { href: "/analytics", label: "Аналитика", icon: "📈", staffOnly: false, exact: false },
   { href: "/billing", label: "Документы/Счета", icon: "📝", staffOnly: false, exact: false },
+  { href: "/tasks", label: "Мои задачи", icon: "✅", staffOnly: true, exact: false },
   { href: "/settings", label: "Настройки", icon: "⚙️", staffOnly: false, exact: false },
 ];
 

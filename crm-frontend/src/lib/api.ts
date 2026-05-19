@@ -18,7 +18,7 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
+export async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
   let token: string | null = null;
   if (typeof window !== "undefined") {
     token = localStorage.getItem("token") || getCookieValue("staff_token") || null;

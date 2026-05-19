@@ -1,3 +1,4 @@
+'use client'
 import { Lead, leadgenApi } from '@/lib/leadgen-api'
 import Link from 'next/link'
 import ChannelBadge from './ChannelBadge'

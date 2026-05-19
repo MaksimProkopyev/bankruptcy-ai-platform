@@ -46,7 +46,7 @@ export interface Stats {
   total_leads: number
   by_channel: Record<string, number>
   by_status: Record<string, number>
-  conversion_rate: number
+  conversion_rate_pct: number
   avg_qualification_hours: number | null
 }
 
@@ -63,7 +63,7 @@ export const leadgenApi = {
   // Leads
   getLeads: (params?: { channel?: string; status?: string; funnel_stage?: string }) => {
     const q = new URLSearchParams(params as any).toString()
-    return apiFetch<{ leads: Lead[]; total: number }>(`/api/v1/leads${q ? '?' + q : ''}`)
+    return apiFetch<{ items: Lead[]; total: number }>(`/api/v1/leads${q ? '?' + q : ''}`)
   },
   getLead: (id: string) => apiFetch<Lead>(`/api/v1/leads/${id}`),
   updateLead: (id: string, data: Partial<Pick<Lead, 'status' | 'funnel_stage' | 'assigned_to'>>) =>
@@ -71,7 +71,7 @@ export const leadgenApi = {
   spamLead: (id: string) =>
     apiFetch<void>(`/api/v1/leads/${id}`, { method: 'DELETE' }),
   getMessages: (id: string) =>
-    apiFetch<{ messages: LeadMessage[] }>(`/api/v1/leads/${id}/messages`),
+    apiFetch<LeadMessage[]>(`/api/v1/leads/${id}/messages`),
   sendMessage: (id: string, content: string) =>
     apiFetch<LeadMessage>(`/api/v1/leads/${id}/messages`, {
       method: 'POST', body: JSON.stringify({ content }),
@@ -80,7 +80,7 @@ export const leadgenApi = {
     apiFetch<void>(`/api/v1/leads/${id}/qualify`, { method: 'POST' }),
 
   // Prospects
-  getProspects: () => apiFetch<{ prospects: Prospect[] }>('/api/v1/prospects'),
+  getProspects: () => apiFetch<Prospect[]>('/api/v1/prospects'),
   confirmProspect: (id: string) =>
     apiFetch<void>(`/api/v1/prospects/${id}/confirm`, { method: 'POST' }),
   rejectProspect: (id: string) =>

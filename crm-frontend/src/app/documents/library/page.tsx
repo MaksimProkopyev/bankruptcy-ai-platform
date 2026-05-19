@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { auth } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -9,15 +8,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1
 // Types
 // ---------------------------------------------------------------------------
 
-interface DocumentMeta {
+interface LibraryDocument {
   key: string;
-  name: string;
+  display_name: string;
   category: string;
-  client_scope: string;
-  access_level: string;
-  size_bytes: number;
-  last_modified: string;
-  tags: string[];
+  client_type: string;
+  size: number;
+  updated_at: string;
+  download_url: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -26,12 +24,18 @@ interface DocumentMeta {
 
 const CATEGORY_LABELS: Record<string, string> = {
   "": "Все",
+  faq: "FAQ",
+  case: "Кейсы",
+  sop: "SOP",
+  regulation: "Регламенты",
+  checklist: "Чек-листы",
+  reference: "Справочники",
   template: "Шаблоны",
   rag: "RAG",
-  sop: "Регламенты",
+  other: "Прочее",
 };
 
-const SCOPE_LABELS: Record<string, string> = {
+const CLIENT_TYPE_LABELS: Record<string, string> = {
   "": "Все",
   individual: "Физлица",
   sole_proprietor: "ИП",
@@ -41,30 +45,28 @@ const SCOPE_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_BADGE: Record<string, string> = {
-  template: "bg-blue-100 text-blue-700",
-  rag: "bg-purple-100 text-purple-700",
+  faq: "bg-blue-100 text-blue-700",
+  case: "bg-purple-100 text-purple-700",
   sop: "bg-green-100 text-green-700",
+  regulation: "bg-teal-100 text-teal-700",
+  checklist: "bg-orange-100 text-orange-700",
+  reference: "bg-yellow-100 text-yellow-700",
+  template: "bg-indigo-100 text-indigo-700",
+  rag: "bg-violet-100 text-violet-700",
+  other: "bg-gray-100 text-gray-600",
 };
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getToken(): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem("token") || "";
-}
-
-function getUserPermissions(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const token = getToken();
-    if (!token) return [];
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.permissions || [];
-  } catch {
-    return [];
-  }
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const ls = localStorage.getItem("token");
+  if (ls) return ls;
+  // Fallback: read from cookie (set by SSO and login pages)
+  const match = document.cookie.match(/(^| )staff_token=([^;]+)/);
+  return match ? decodeURIComponent(match[2]) : null;
 }
 
 function formatBytes(bytes: number): string {
@@ -75,14 +77,19 @@ function formatBytes(bytes: number): string {
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      ...(init?.headers || {}),
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
   if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      document.cookie = "staff_token=; path=/; max-age=0";
+      window.location.href = "/login";
+    }
     const err = await res.json().catch(() => ({ detail: "Ошибка запроса" }));
     throw new Error(err.detail || "Ошибка запроса");
   }
@@ -98,13 +105,12 @@ function UploadModal({
   onUploaded,
 }: {
   onClose: () => void;
-  onUploaded: (doc: DocumentMeta) => void;
+  onUploaded: (doc: LibraryDocument) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [category, setCategory] = useState("template");
-  const [clientScope, setClientScope] = useState("all");
-  const [accessLevel, setAccessLevel] = useState("internal");
-  const [tags, setTags] = useState("");
+  const [clientType, setClientType] = useState("all");
+  const [displayName, setDisplayName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -121,17 +127,15 @@ function UploadModal({
     setUploading(true);
     setError(null);
     try {
-      const key = `uploads/${category}/${file.name}`;
       const params = new URLSearchParams({
         category,
-        client_scope: clientScope,
-        access_level: accessLevel,
-        tags,
+        client_type: clientType,
+        display_name: displayName || file.name,
       });
       const form = new FormData();
       form.append("file", file);
-      const doc = await apiFetch<DocumentMeta>(
-        `/storage/documents/${encodeURIComponent(key)}?${params}`,
+      const doc = await apiFetch<LibraryDocument>(
+        `/library/upload?${params}`,
         { method: "POST", body: form }
       );
       onUploaded(doc);
@@ -173,6 +177,17 @@ function UploadModal({
             onChange={(e) => setFile(e.target.files?.[0] || null)}
           />
 
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Отображаемое имя</label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder={file?.name || "Название документа"}
+              className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Категория</label>
@@ -189,8 +204,8 @@ function UploadModal({
             <div>
               <label className="block text-xs text-gray-500 mb-1">Тип клиента</label>
               <select
-                value={clientScope}
-                onChange={(e) => setClientScope(e.target.value)}
+                value={clientType}
+                onChange={(e) => setClientType(e.target.value)}
                 className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
               >
                 <option value="all">Все</option>
@@ -199,30 +214,6 @@ function UploadModal({
                 <option value="legal_entity">Юрлица</option>
                 <option value="credit_organization">Кредитные орг.</option>
               </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Доступ</label>
-              <select
-                value={accessLevel}
-                onChange={(e) => setAccessLevel(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
-              >
-                <option value="internal">Внутренний</option>
-                <option value="public">Публичный</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Теги (через запятую)</label>
-              <input
-                type="text"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="банкротство, суд"
-                className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg"
-              />
             </div>
           </div>
 
@@ -255,59 +246,38 @@ function UploadModal({
 // ---------------------------------------------------------------------------
 
 export default function LibraryPage() {
-  const [docs, setDocs] = useState<DocumentMeta[]>([]);
+  const [docs, setDocs] = useState<LibraryDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState("");
-  const [clientScope, setClientScope] = useState("");
+  const [clientType, setClientType] = useState("");
   const [search, setSearch] = useState("");
-  const [downloading, setDownloading] = useState<string | null>(null);
-  const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
 
-  const canWrite = getUserPermissions().includes("storage:write");
-
   function fetchDocs() {
+    if (!getToken()) {
+      window.location.href = "/login";
+      return;
+    }
     const params = new URLSearchParams();
     if (category) params.set("category", category);
-    if (clientScope) params.set("client_scope", clientScope);
+    if (clientType) params.set("client_type", clientType);
     if (search) params.set("search", search);
     setLoading(true);
-    apiFetch<DocumentMeta[]>(`/storage/documents?${params}`)
+    setError(null);
+    apiFetch<LibraryDocument[]>(`/library/?${params}`)
       .then(setDocs)
-      .catch(console.error)
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }
 
   useEffect(() => {
     fetchDocs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, clientScope, search]);
+  }, [category, clientType, search]);
 
-  async function handleDownload(key: string) {
-    setDownloading(key);
-    try {
-      const { url } = await apiFetch<{ url: string; expires_at: string }>(
-        `/storage/documents/${encodeURIComponent(key)}/url`
-      );
-      window.open(url, "_blank");
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setDownloading(null);
-    }
-  }
-
-  async function handleDelete(key: string) {
-    if (!confirm(`Удалить «${key.split("/").pop()}»?`)) return;
-    setDeletingKey(key);
-    try {
-      await apiFetch(`/storage/documents/${encodeURIComponent(key)}`, { method: "DELETE" });
-      setDocs((prev) => prev.filter((d) => d.key !== key));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setDeletingKey(null);
-    }
+  function handleDownload(doc: LibraryDocument) {
+    window.open(doc.download_url, "_blank");
   }
 
   return (
@@ -317,56 +287,69 @@ export default function LibraryPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Библиотека документов</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {docs.length} {docs.length === 1 ? "документ" : "документов"}
+            {loading ? "Загрузка..." : `${docs.length} ${docs.length === 1 ? "документ" : "документов"}`}
           </p>
         </div>
-        {canWrite && (
-          <button
-            onClick={() => setShowUpload(true)}
-            className="px-4 py-2 text-sm bg-[#1B3A5C] text-white rounded-lg hover:bg-[#142d48] transition-colors"
-          >
-            + Загрузить
-          </button>
-        )}
+        <button
+          onClick={() => setShowUpload(true)}
+          className="px-4 py-2 text-sm bg-[#1B3A5C] text-white rounded-lg hover:bg-[#142d48] transition-colors"
+        >
+          + Загрузить
+        </button>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
-        >
-          {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
-          ))}
-        </select>
-
-        <select
-          value={clientScope}
-          onChange={(e) => setClientScope(e.target.value)}
-          className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
-        >
-          {Object.entries(SCOPE_LABELS)
-            .filter(([val]) => val !== "all")
-            .map(([val, label]) => (
+      <div className="flex flex-wrap gap-3 items-end mb-6">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-gray-400 font-medium">Категория</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="h-10 px-3 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
+          >
+            {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
               <option key={val} value={val}>{label}</option>
             ))}
-        </select>
+          </select>
+        </div>
 
-        <input
-          type="text"
-          placeholder="Поиск по названию..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white flex-1 min-w-[180px]"
-        />
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-gray-400 font-medium">Тип клиента</label>
+          <select
+            value={clientType}
+            onChange={(e) => setClientType(e.target.value)}
+            className="h-10 px-3 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
+          >
+            {Object.entries(CLIENT_TYPE_LABELS)
+              .filter(([val]) => val !== "all")
+              .map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
+          <label className="text-xs text-gray-400 font-medium opacity-0 select-none">Поиск</label>
+          <input
+            type="text"
+            placeholder="Поиск по названию..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-10 px-3 text-sm border border-gray-200 rounded-lg bg-white w-full"
+          />
+        </div>
       </div>
 
+      {error && (
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-y-auto max-h-[calc(100vh-240px)]">
         <table className="w-full">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr className="bg-[#1B3A5C]">
               <th className="text-left px-4 py-3 text-xs font-medium text-white/60 uppercase tracking-wide">
                 Название
@@ -388,7 +371,6 @@ export default function LibraryPage() {
           </thead>
           <tbody className="divide-y divide-gray-50">
             {loading ? (
-              // Skeleton rows
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}>
                   {Array.from({ length: 6 }).map((_, j) => (
@@ -402,7 +384,7 @@ export default function LibraryPage() {
               <tr>
                 <td colSpan={6} className="text-center py-16 text-gray-400">
                   <p className="text-base">Документов не найдено</p>
-                  {(category || clientScope || search) && (
+                  {(category || clientType || search) && (
                     <p className="text-sm mt-1">Попробуйте изменить фильтры</p>
                   )}
                 </td>
@@ -411,18 +393,12 @@ export default function LibraryPage() {
               docs.map((doc) => (
                 <tr key={doc.key} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
-                    <p className="text-sm font-medium text-gray-900 truncate max-w-xs" title={doc.name}>
-                      {doc.name}
+                    <p className="text-sm font-medium text-gray-900 truncate max-w-xs" title={doc.display_name}>
+                      {doc.display_name}
                     </p>
-                    {doc.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {doc.tags.slice(0, 3).map((tag) => (
-                          <span key={tag} className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <p className="text-xs text-gray-400 truncate max-w-xs mt-0.5" title={doc.key}>
+                      {doc.key}
+                    </p>
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -430,38 +406,25 @@ export default function LibraryPage() {
                         CATEGORY_BADGE[doc.category] ?? "bg-gray-100 text-gray-600"
                       }`}
                     >
-                      {CATEGORY_LABELS[doc.category] ?? doc.category}
+                      {(CATEGORY_LABELS[doc.category] ?? doc.category) || "—"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
-                    {SCOPE_LABELS[doc.client_scope] ?? doc.client_scope}
+                    {(CLIENT_TYPE_LABELS[doc.client_type] ?? doc.client_type) || "—"}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
-                    {formatBytes(doc.size_bytes)}
+                    {formatBytes(doc.size)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
-                    {new Date(doc.last_modified).toLocaleDateString("ru-RU")}
+                    {new Date(doc.updated_at).toLocaleDateString("ru-RU")}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        disabled={downloading === doc.key}
-                        onClick={() => handleDownload(doc.key)}
-                        className="text-xs px-3 py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors disabled:opacity-50"
-                      >
-                        {downloading === doc.key ? "..." : "Скачать"}
-                      </button>
-                      {canWrite && (
-                        <button
-                          disabled={deletingKey === doc.key}
-                          onClick={() => handleDelete(doc.key)}
-                          className="text-xs px-2 py-1 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
-                          title="Удалить"
-                        >
-                          {deletingKey === doc.key ? "..." : "✕"}
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      onClick={() => handleDownload(doc)}
+                      className="text-xs px-3 py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                    >
+                      Скачать
+                    </button>
                   </td>
                 </tr>
               ))

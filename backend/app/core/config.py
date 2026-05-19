@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     YC_BUCKET_NAME: str = "bankruptcy-ai-knowledge"
     YC_PRESIGNED_URL_TTL: int = 3600
 
+    # Yandex Object Storage — multi-bucket (library + client documents)
+    YOS_ACCESS_KEY: str = ""
+    YOS_SECRET_KEY: str = ""
+    YOS_ENDPOINT: str = "https://storage.yandexcloud.net"
+    YOS_REGION: str = "ru-central1"
+    YOS_BUCKET_LIBRARY: str = "bankruptcy-ai-knowledge"
+    YOS_BUCKET_CLIENTS: str = "bfl-crm-clients-nocodb-prod"
+
     # Internal service auth
     INTERNAL_SECRET: str = "change-me-internal-secret"
 

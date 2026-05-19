@@ -1,20 +1,108 @@
 """Documents API — upload, OCR, validation, checklist."""
 
+from datetime import datetime
+from typing import Optional
 from uuid import UUID
 
 import redis.asyncio as redis
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from pydantic import BaseModel
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.permissions import require_permission
 from app.db.session import get_db
-from app.models.models import AITask, Case, CaseEvent, Document, DocumentStatus, DocumentType
+from app.models.models import AITask, Case, CaseEvent, Client, Document, DocumentStatus, DocumentType
 from app.schemas.schemas import DocumentResponse
 from app.services.file_storage import get_storage
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Global documents list
+# ---------------------------------------------------------------------------
+
+
+class GlobalDocumentItem(BaseModel):
+    id: UUID
+    file_name: Optional[str]
+    document_type: str
+    status: str
+    case_id: UUID
+    case_number: Optional[str]
+    client_name: str
+    created_at: datetime
+    download_url: Optional[str] = None
+
+
+class GlobalDocumentPage(BaseModel):
+    items: list[GlobalDocumentItem]
+    total: int
+    page: int
+    per_page: int
+
+
+@router.get(
+    "/",
+    response_model=GlobalDocumentPage,
+    dependencies=[Depends(require_permission("documents", "read"))],
+)
+async def list_all_documents(
+    file_type: Optional[str] = Query(None, description="DocumentType value"),
+    status: Optional[str] = Query(None, description="DocumentStatus value"),
+    search: Optional[str] = Query(None, description="Filter by file_name"),
+    case_id: Optional[UUID] = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+) -> GlobalDocumentPage:
+    """Global paginated list of all documents with case + client info."""
+    stmt = (
+        select(Document, Case, Client)
+        .join(Case, Document.case_id == Case.id)
+        .join(Client, Case.client_id == Client.id)
+        .order_by(Document.created_at.desc())
+    )
+    if file_type:
+        stmt = stmt.where(Document.document_type == file_type)
+    if status:
+        stmt = stmt.where(Document.status == status)
+    if search:
+        stmt = stmt.where(Document.file_name.ilike(f"%{search}%"))
+    if case_id:
+        stmt = stmt.where(Document.case_id == case_id)
+
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total: int = (await db.execute(count_stmt)).scalar() or 0
+
+    stmt = stmt.limit(per_page).offset((page - 1) * per_page)
+    rows = (await db.execute(stmt)).all()
+
+    storage = get_storage()
+    items: list[GlobalDocumentItem] = []
+    for doc, case, client in rows:
+        download_url: Optional[str] = None
+        if doc.file_path:
+            try:
+                download_url = storage.get_presigned_url(doc.file_path)
+            except Exception:
+                pass
+        items.append(
+            GlobalDocumentItem(
+                id=doc.id,
+                file_name=doc.file_name,
+                document_type=doc.document_type.value if hasattr(doc.document_type, "value") else str(doc.document_type),
+                status=doc.status.value if hasattr(doc.status, "value") else str(doc.status),
+                case_id=doc.case_id,
+                case_number=case.case_number,
+                client_name=f"{client.last_name} {client.first_name}",
+                created_at=doc.created_at,
+                download_url=download_url,
+            )
+        )
+    return GlobalDocumentPage(items=items, total=total, page=page, per_page=per_page)
 
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 

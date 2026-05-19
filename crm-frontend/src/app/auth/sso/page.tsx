@@ -24,15 +24,15 @@ export default function SSOPage() {
 
       // Store for crm-frontend's api.ts (localStorage) and middleware (cookie)
       localStorage.setItem("token", token);
-      document.cookie = `staff_token=${encodeURIComponent(token)}; path=/; SameSite=Strict`;
+      document.cookie = `staff_token=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax`;
 
       // Populate name/email cookies used by the Sidebar
       const fullName = [payload.first_name, payload.last_name].filter(Boolean).join(" ");
       if (fullName) {
-        document.cookie = `staff_name=${encodeURIComponent(fullName)}; path=/; SameSite=Strict`;
+        document.cookie = `staff_name=${encodeURIComponent(fullName)}; path=/; max-age=86400; SameSite=Lax`;
       }
       if (payload.email) {
-        document.cookie = `staff_email=${encodeURIComponent(payload.email)}; path=/; SameSite=Strict`;
+        document.cookie = `staff_email=${encodeURIComponent(payload.email)}; path=/; max-age=86400; SameSite=Lax`;
       }
     } catch {
       router.replace("/login");

@@ -23,6 +23,7 @@ app = FastAPI(
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
     lifespan=lifespan,
+    redirect_slashes=False,
 )
 
 # CORS

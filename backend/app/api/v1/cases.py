@@ -25,6 +25,7 @@ from app.services.case_machine import get_available_transitions, is_valid_transi
 router = APIRouter()
 
 
+@router.get("", response_model=list[CaseResponse], dependencies=[Depends(require_permission("cases", "read"))], include_in_schema=False)
 @router.get("/", response_model=list[CaseResponse], dependencies=[Depends(require_permission("cases", "read"))])
 async def list_cases(
     status: str | None = None,

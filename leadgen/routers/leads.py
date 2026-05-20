@@ -1,9 +1,8 @@
-import asyncio
 import logging
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -12,9 +11,9 @@ from leadgen.database import get_db
 from leadgen.models.lead import Lead, LeadStatus
 from leadgen.models.lead_message import LeadMessage
 from leadgen.models.lead_score import LeadScore
+from leadgen.models.qualification_task import QualificationTask
 from leadgen.schemas.lead import LeadListResponse, LeadResponse, LeadUpdate
 from leadgen.schemas.lead_message import LeadMessageCreate, LeadMessageResponse
-from leadgen.schemas.qualification import QualificationTaskResponse
 from leadgen.services import messaging as messaging_service
 from leadgen.services import qualification as qual_service
 
@@ -137,18 +136,34 @@ async def send_message(
     return LeadMessageResponse.model_validate(message)
 
 
-@router.post("/{lead_id}/qualify", response_model=QualificationTaskResponse)
+@router.post("/{lead_id}/qualify")
 async def qualify_lead(
     lead_id: UUID,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-) -> QualificationTaskResponse:
-    """Запустить AI-квалификацию лида (async, non-blocking)."""
+) -> dict:
+    """Запустить AI-квалификацию лида (async, non-blocking).
+
+    Returns 409 if qualification is already in progress.
+    Updates lead status to in_progress, creates a QualificationTask,
+    and starts the LangGraph qualification graph in the background.
+    """
     lead = await db.get(Lead, lead_id)
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    task = await qual_service.create_qualification_task(db, lead)
-    background_tasks.add_task(qual_service.send_to_ai_studio, str(task.id), lead)
+    # 409 if already processing
+    stmt = select(QualificationTask).where(
+        QualificationTask.lead_id == lead_id,
+        QualificationTask.status == "processing",
+    )
+    active_task = (await db.execute(stmt)).scalar_one_or_none()
+    if active_task:
+        raise HTTPException(status_code=409, detail="Qualification already in progress")
 
-    return QualificationTaskResponse.model_validate(task)
+    if lead.status == LeadStatus.NEW:
+        lead.status = LeadStatus.IN_PROGRESS
+        await db.commit()
+
+    task = await qual_service.start_qualification(lead_id, db)
+
+    return {"task_id": str(task.id), "status": "started"}

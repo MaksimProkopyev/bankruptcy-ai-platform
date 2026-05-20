@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from leadgen.adapters.web_form import WebFormAdapter
 from leadgen.database import get_db
 from leadgen.services import lead_service
+from leadgen.services import qualification as qual_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -22,6 +23,10 @@ async def web_form_webhook(
     payload = await request.json()
     event = await _web_adapter.normalize(payload)
     lead = await lead_service.process_incoming_event(db, event)
+
+    # After message is saved, resume any active qualification graph
+    await qual_service.resume_qualification(lead.id, event.message, db)
+
     return {"lead_id": str(lead.id), "status": lead.status}
 
 

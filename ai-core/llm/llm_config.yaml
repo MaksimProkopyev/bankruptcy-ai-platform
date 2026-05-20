@@ -103,11 +103,12 @@ tasks:
   # ---- Qualification agent (152-ФЗ aware routing) ----
   qualification_pii:
     # Raw lead messages — must stay inside the RU perimeter.
+    # claude is last-resort fallback when RU providers are unavailable (dev/staging).
     primary: yandexgpt
     temperature: 0.3
     max_tokens: 2000
     fallback:
-      chain: [gigachat]
+      chain: [gigachat, claude]
       policy: auto_fallback
   qualification_reasoning:
     # Operates on anonymised structured signals — higher-quality reasoning.
@@ -119,12 +120,13 @@ tasks:
       policy: auto_fallback
   qualification_simple:
     # Cheap template-style replies (e.g. disqualification message).
+    # claude is last-resort fallback when RU providers are unavailable (dev/staging).
     primary: yandexgpt
     primary_model: "yandexgpt-lite"
     temperature: 0.2
     max_tokens: 1024
     fallback:
-      chain: [gigachat]
+      chain: [gigachat, claude]
       policy: auto_fallback
 
 health:

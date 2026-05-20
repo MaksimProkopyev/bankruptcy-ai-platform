@@ -1,218 +1,159 @@
-"""LLM router enforcing the 152-ФЗ data-residency rule.
+"""LLM router for the qualification agent — thin wrapper over ai-core/llm/.
 
-Personal data (raw lead messages) MUST stay inside the Russian perimeter and
-therefore is processed by YandexGPT. Anonymised structured signals can be sent
-to Anthropic Claude for higher-quality reasoning. Simple template-style replies
-go to YandexGPT Lite to save cost.
+The qualification graph used to ship its own routing/transport layer. That code
+is replaced by ``ai-core/llm`` (LLMRouter + per-task YAML config) so that all
+services in the platform share a single LLM abstraction, health monitor and
+pricing/log pipeline.
 
-Routing table
--------------
-YandexGPT Pro   — greet, ask_next_question, process_reply, extract_signals
-Claude Sonnet 4 — assess_eligibility, score_lead, resolve_conflicts,
-                  generate_verdict, detect_conflicts
-YandexGPT Lite  — disqualify, retry_message
+The wrapper here only does two things:
+
+1. Make the ``ai-core`` package importable from the ``agents`` package by
+   inserting it into ``sys.path`` (the dir name contains a hyphen, so it
+   cannot be imported the usual way without installation).
+2. Translate a LangGraph *node name* into one of three ai-core *task types*
+   that enforce the 152-ФЗ data-residency rule:
+
+   * ``qualification_pii``        — raw lead messages, RU perimeter only.
+   * ``qualification_reasoning``  — anonymised signals, higher-quality model.
+   * ``qualification_simple``     — cheap template-style replies.
 """
 
 from __future__ import annotations
 
 import logging
-import os
+import sys
+from pathlib import Path
 from typing import Any
+
+# ---------------------------------------------------------------------------
+# Bootstrap — make ``ai-core`` importable.
+# ---------------------------------------------------------------------------
+
+_AI_CORE_ROOT = Path(__file__).resolve().parents[2] / "ai-core"
+if _AI_CORE_ROOT.is_dir() and str(_AI_CORE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_AI_CORE_ROOT))
+
+from llm import LLMConfigLoader, LLMRouter  # noqa: E402 — path tweak above
 
 logger = logging.getLogger(__name__)
 
+
 # ---------------------------------------------------------------------------
-# Routing table
+# Routing table — node name → ai-core task type.
 # ---------------------------------------------------------------------------
 
-YANDEX_PRO_NODES = {
+_PII_NODES = {
     "greet",
     "ask_next_question",
     "process_reply",
     "extract_signals",
-}
-
-CLAUDE_NODES = {
-    "detect_conflicts",
-    "resolve_conflicts",
-    "assess_eligibility",
-    "score_lead",
-    "generate_verdict",
-}
-
-YANDEX_LITE_NODES = {
-    "disqualify",
     "retry_message",
 }
 
+_REASONING_NODES = {
+    "assess_eligibility",
+    "score_lead",
+    "resolve_conflicts",
+    "generate_verdict",
+    "detect_conflicts",
+}
+
+_SIMPLE_NODES = {
+    "disqualify",
+}
+
+
+def _task_type_for_node(node_name: str) -> str:
+    if node_name in _PII_NODES:
+        return "qualification_pii"
+    if node_name in _REASONING_NODES:
+        return "qualification_reasoning"
+    if node_name in _SIMPLE_NODES:
+        return "qualification_simple"
+    logger.warning(
+        "llm_router: node %r has no explicit routing — defaulting to qualification_pii",
+        node_name,
+    )
+    return "qualification_pii"
+
 
 # ---------------------------------------------------------------------------
-# Yandex chat model — thin LangChain-compatible wrapper around YandexGPT REST.
+# NodeLLMRouter — node-centric facade over ai-core LLMRouter.
 # ---------------------------------------------------------------------------
 
 
-class _YandexGPTChat:
-    """Minimal async chat wrapper for YandexGPT.
+class NodeLLMRouter:
+    """Adapter exposing a node-centric API on top of ``ai-core/llm/router.py``.
 
-    Implements ``ainvoke`` so callers can use a uniform interface across
-    Claude and YandexGPT models without pulling in the full langchain-yandex
-    integration (which is not yet stable for v0.3).
+    Single shared ai-core router instance, lazily constructed on first call.
     """
 
-    def __init__(
-        self,
-        *,
-        model: str,
-        api_key: str,
-        folder_id: str,
-        temperature: float = 0.3,
-        max_tokens: int = 2000,
-    ) -> None:
-        self.model = model
-        self.api_key = api_key
-        self.folder_id = folder_id
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        self._endpoint = (
-            "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
-        )
-
-    @property
-    def model_uri(self) -> str:
-        return f"gpt://{self.folder_id}/{self.model}"
-
-    async def ainvoke(self, messages: list[dict[str, str]] | str) -> Any:
-        """Invoke YandexGPT asynchronously.
-
-        Accepts either a plain string (treated as a single user message) or a
-        list of ``{"role": ..., "text": ...}`` dicts.
-        """
-        import httpx
-
-        if isinstance(messages, str):
-            payload_messages = [{"role": "user", "text": messages}]
-        else:
-            payload_messages = [
-                {
-                    "role": m.get("role", "user"),
-                    "text": m.get("text") or m.get("content", ""),
-                }
-                for m in messages
-            ]
-
-        payload = {
-            "modelUri": self.model_uri,
-            "completionOptions": {
-                "stream": False,
-                "temperature": self.temperature,
-                "maxTokens": str(self.max_tokens),
-            },
-            "messages": payload_messages,
-        }
-        headers = {
-            "Authorization": f"Api-Key {self.api_key}",
-            "x-folder-id": self.folder_id,
-            "Content-Type": "application/json",
-        }
-
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(self._endpoint, json=payload, headers=headers)
-            response.raise_for_status()
-            data = response.json()
-
-        # Shape: {"result": {"alternatives": [{"message": {"text": "..."}}]}}
-        alternatives = data.get("result", {}).get("alternatives", [])
-        text = ""
-        if alternatives:
-            text = alternatives[0].get("message", {}).get("text", "")
-
-        return _ChatResponse(content=text, raw=data)
-
-
-class _ChatResponse:
-    """Uniform response object — exposes ``.content`` like LangChain messages."""
-
-    def __init__(self, content: str, raw: Any | None = None) -> None:
-        self.content = content
-        self.raw = raw
-
-    def __repr__(self) -> str:  # pragma: no cover
-        return f"_ChatResponse(content={self.content!r})"
-
-
-# ---------------------------------------------------------------------------
-# Router
-# ---------------------------------------------------------------------------
-
-
-class LLMRouter:
-    """Resolves the appropriate chat model for a given graph node."""
-
     def __init__(self) -> None:
-        self.yandex_api_key = os.getenv("YANDEX_API_KEY", "")
-        self.yandex_folder_id = os.getenv("YANDEX_FOLDER_ID", "")
-        self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", "")
-        self._cache: dict[str, Any] = {}
+        loader = LLMConfigLoader()
+        self._router = LLMRouter(loader.load_config(), loader.load_pricing())
 
-    # -- model factories ----------------------------------------------------
+    async def invoke(
+        self,
+        node_name: str,
+        prompt: str,
+        *,
+        user_text: str = "",
+        case_id: str | None = None,
+    ) -> str:
+        """Run a single-shot prompt for ``node_name`` and return raw text.
 
-    def _yandex_pro(self) -> _YandexGPTChat:
-        if "yandex_pro" not in self._cache:
-            self._cache["yandex_pro"] = _YandexGPTChat(
-                model="yandexgpt/latest",
-                api_key=self.yandex_api_key,
-                folder_id=self.yandex_folder_id,
-                temperature=0.3,
-            )
-        return self._cache["yandex_pro"]
+        ``prompt`` is treated as the system prompt when ``user_text`` is given;
+        otherwise it is sent as the only user message.
+        """
+        task_type = _task_type_for_node(node_name)
 
-    def _yandex_lite(self) -> _YandexGPTChat:
-        if "yandex_lite" not in self._cache:
-            self._cache["yandex_lite"] = _YandexGPTChat(
-                model="yandexgpt-lite/latest",
-                api_key=self.yandex_api_key,
-                folder_id=self.yandex_folder_id,
-                temperature=0.2,
-            )
-        return self._cache["yandex_lite"]
+        if user_text:
+            messages = [{"role": "user", "content": user_text}]
+            system = prompt
+        else:
+            messages = [{"role": "user", "content": prompt}]
+            system = None
 
-    def _claude(self) -> Any:
-        if "claude" not in self._cache:
-            # Imported lazily to avoid import cost when only YandexGPT is used.
-            from langchain_anthropic import ChatAnthropic
-
-            self._cache["claude"] = ChatAnthropic(
-                model="claude-sonnet-4-5",
-                api_key=self.anthropic_api_key,
-                temperature=0.2,
-                max_tokens=2000,
-            )
-        return self._cache["claude"]
-
-    # -- public api ---------------------------------------------------------
-
-    def get_llm(self, node_name: str) -> Any:
-        """Return the chat model assigned to ``node_name``."""
-        if node_name in YANDEX_PRO_NODES:
-            return self._yandex_pro()
-        if node_name in YANDEX_LITE_NODES:
-            return self._yandex_lite()
-        if node_name in CLAUDE_NODES:
-            return self._claude()
-        logger.warning(
-            "llm_router: node %r has no explicit routing — defaulting to YandexGPT Pro",
-            node_name,
+        response = await self._router.complete(
+            task_type=task_type,
+            messages=messages,
+            system=system,
+            caller_service="qualification",
+            case_id=case_id,
         )
-        return self._yandex_pro()
+        return (response.text or "").strip()
 
 
-# Module-level singleton for convenience.
-_default_router: LLMRouter | None = None
+# ---------------------------------------------------------------------------
+# Module-level singleton + helpers.
+# ---------------------------------------------------------------------------
+
+_default_router: NodeLLMRouter | None = None
 
 
-def get_llm_for_node(node_name: str) -> Any:
-    """Convenience accessor that lazily instantiates a shared router."""
+def get_router() -> NodeLLMRouter:
+    """Return the shared ``NodeLLMRouter`` (lazy-instantiated)."""
     global _default_router
     if _default_router is None:
-        _default_router = LLMRouter()
-    return _default_router.get_llm(node_name)
+        _default_router = NodeLLMRouter()
+    return _default_router
+
+
+class _NodeLLMHandle:
+    """Tiny per-node handle with ``async ainvoke(prompt) -> str``.
+
+    Kept for backwards compatibility with the previous ``get_llm_for_node``
+    contract; new code should prefer ``NodeLLMRouter.invoke`` directly.
+    """
+
+    def __init__(self, router: NodeLLMRouter, node_name: str) -> None:
+        self._router = router
+        self._node_name = node_name
+
+    async def ainvoke(self, prompt: str, *, user_text: str = "") -> str:
+        return await self._router.invoke(self._node_name, prompt, user_text=user_text)
+
+
+def get_llm(node_name: str) -> _NodeLLMHandle:
+    """Return a node-scoped handle whose ``ainvoke(prompt)`` returns ``str``."""
+    return _NodeLLMHandle(get_router(), node_name)

@@ -100,6 +100,32 @@ tasks:
       chain: []
       policy: retry_then_alert
       max_retries: 3
+  # ---- Qualification agent (152-ФЗ aware routing) ----
+  qualification_pii:
+    # Raw lead messages — must stay inside the RU perimeter.
+    primary: yandexgpt
+    temperature: 0.3
+    max_tokens: 2000
+    fallback:
+      chain: [gigachat]
+      policy: auto_fallback
+  qualification_reasoning:
+    # Operates on anonymised structured signals — higher-quality reasoning.
+    primary: claude
+    temperature: 0.2
+    max_tokens: 2000
+    fallback:
+      chain: [openai]
+      policy: auto_fallback
+  qualification_simple:
+    # Cheap template-style replies (e.g. disqualification message).
+    primary: yandexgpt
+    primary_model: "yandexgpt-lite"
+    temperature: 0.2
+    max_tokens: 1024
+    fallback:
+      chain: [gigachat]
+      policy: auto_fallback
 
 health:
   window_minutes: 10

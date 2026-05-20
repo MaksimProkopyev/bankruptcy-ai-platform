@@ -11,6 +11,17 @@ import os
 from datetime import datetime
 from uuid import UUID
 
+try:
+    from openinference.semconv.trace import SpanAttributes as _SpanAttr
+    from opentelemetry import trace as _otel_trace
+
+    _tracer = _otel_trace.get_tracer(__name__)
+    _SESSION_ID = _SpanAttr.SESSION_ID
+    _USER_ID = _SpanAttr.USER_ID
+    _OTEL_AVAILABLE = True
+except Exception:
+    _OTEL_AVAILABLE = False
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -180,7 +191,14 @@ async def _run_graph_background(task_id: str, lead_id: str, initial_state: dict)
         graph = await _get_graph()
         config = {"configurable": {"thread_id": lead_id}}
 
-        final_state = await graph.ainvoke(initial_state, config=config)
+        if _OTEL_AVAILABLE:
+            with _tracer.start_as_current_span("qualification_run") as span:
+                span.set_attribute(_SESSION_ID, lead_id)
+                span.set_attribute(_USER_ID, lead_id)
+                final_state = await graph.ainvoke(initial_state, config=config)
+        else:
+            final_state = await graph.ainvoke(initial_state, config=config)
+
         await _handle_final_state(task_id, lead_id, final_state or {})
     except Exception:
         logger.exception("qualification graph failed for lead %s", lead_id)
@@ -201,7 +219,15 @@ async def _resume_graph_background(task_id: str, lead_id: str, new_message: str)
 
         # Update state with the new inbound message, then resume
         await graph.aupdate_state(config, {"messages": [HumanMessage(content=new_message)]})
-        final_state = await graph.ainvoke(None, config=config)
+
+        if _OTEL_AVAILABLE:
+            with _tracer.start_as_current_span("qualification_resume") as span:
+                span.set_attribute(_SESSION_ID, lead_id)
+                span.set_attribute(_USER_ID, lead_id)
+                final_state = await graph.ainvoke(None, config=config)
+        else:
+            final_state = await graph.ainvoke(None, config=config)
+
         await _handle_final_state(task_id, lead_id, final_state or {})
     except Exception:
         logger.exception("qualification graph resume failed for lead %s", lead_id)

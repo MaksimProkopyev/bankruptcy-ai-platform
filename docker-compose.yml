@@ -83,8 +83,8 @@ services:
   # Leadgen Service (FastAPI, port 8002)
   leadgen:
     build:
-      context: ./leadgen
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: leadgen/Dockerfile
     container_name: bankruptcy-leadgen
     ports:
       - "127.0.0.1:8002:8002"

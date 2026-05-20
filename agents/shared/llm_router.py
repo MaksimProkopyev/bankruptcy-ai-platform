@@ -5,35 +5,25 @@ is replaced by ``ai-core/llm`` (LLMRouter + per-task YAML config) so that all
 services in the platform share a single LLM abstraction, health monitor and
 pricing/log pipeline.
 
-The wrapper here only does two things:
+``ai-core`` is installed as an editable dependency via ``-e ../ai-core`` in
+``agents/requirements.txt``, so ``llm.router`` is importable without any
+sys.path tricks.
 
-1. Make the ``ai-core`` package importable from the ``agents`` package by
-   inserting it into ``sys.path`` (the dir name contains a hyphen, so it
-   cannot be imported the usual way without installation).
-2. Translate a LangGraph *node name* into one of three ai-core *task types*
-   that enforce the 152-ФЗ data-residency rule:
+Translate a LangGraph *node name* into one of three ai-core *task types*
+that enforce the 152-ФЗ data-residency rule:
 
-   * ``qualification_pii``        — raw lead messages, RU perimeter only.
-   * ``qualification_reasoning``  — anonymised signals, higher-quality model.
-   * ``qualification_simple``     — cheap template-style replies.
+  * ``qualification_pii``        — raw lead messages, RU perimeter only.
+  * ``qualification_reasoning``  — anonymised signals, higher-quality model.
+  * ``qualification_simple``     — cheap template-style replies.
 """
 
 from __future__ import annotations
 
 import logging
-import sys
-from pathlib import Path
 from typing import Any
 
-# ---------------------------------------------------------------------------
-# Bootstrap — make ``ai-core`` importable.
-# ---------------------------------------------------------------------------
-
-_AI_CORE_ROOT = Path(__file__).resolve().parents[2] / "ai-core"
-if _AI_CORE_ROOT.is_dir() and str(_AI_CORE_ROOT) not in sys.path:
-    sys.path.insert(0, str(_AI_CORE_ROOT))
-
-from llm import LLMConfigLoader, LLMRouter  # noqa: E402 — path tweak above
+from llm.router import LLMRouter
+from llm.config import LLMConfigLoader
 
 logger = logging.getLogger(__name__)
 

@@ -19,3 +19,6 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["llm*", "agents*", "rag*", "ocr*", "prompts*"]
+
+[tool.setuptools.package-data]
+"llm" = ["*.yaml"]

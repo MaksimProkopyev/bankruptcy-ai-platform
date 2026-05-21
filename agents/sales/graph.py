@@ -1,8 +1,11 @@
 """Sales graph — StateGraph[SalesState].
 
-intake and consult are real implementations; remaining nodes are stubs.
+Real nodes: intake, consult, recommend, present_price.
+Stub nodes: qualify_deep, handle_objections, close, follow_up,
+            handoff_to_crm, end_lost.
+Async LLM router: router_reaction (classifies lead's reaction to price).
 
-Compile with a checkpointer for persistence:
+Compile with a checkpointer:
 
     async with get_checkpointer() as cp:
         graph = build_graph().compile(checkpointer=cp)
@@ -11,15 +14,23 @@ Compile with a checkpointer for persistence:
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from langchain_core.messages import HumanMessage
 from langgraph.graph import END, START, StateGraph
 
-from .nodes.intake import intake
+from .llm import get_llm
 from .nodes.consult import consult
+from .nodes.intake import intake
+from .nodes.present_price import present_price
+from .nodes.recommend import recommend
 from .state import SalesState
+
+_PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stub factory — used for nodes not yet implemented
+# Stub factory — for nodes not yet implemented
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _stub(node_name: str):
@@ -32,17 +43,12 @@ def _stub(node_name: str):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Routers — all return the first (happy-path) branch for now
+# Sync routers (no LLM needed)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def router_data_complete(state: SalesState) -> str:
     """consult → qualify_deep | recommend"""
     return "recommend"
-
-
-def router_reaction(state: SalesState) -> str:
-    """present_price → handle_objections | close | follow_up"""
-    return "handle_objections"
 
 
 def router_convinced(state: SalesState) -> str:
@@ -61,6 +67,46 @@ def router_alive(state: SalesState) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Async LLM router — present_price reaction classifier
+# ─────────────────────────────────────────────────────────────────────────────
+
+_REACTION_MAP = {
+    "AGREE":     "close",
+    "OBJECTION": "handle_objections",
+    "COLD":      "follow_up",
+}
+
+async def router_reaction(state: SalesState) -> str:
+    """Classify the lead's reaction to the price presentation.
+
+    Reads the last HumanMessage, calls the LLM with router_reaction.md,
+    and maps the response to a graph edge:
+        AGREE     → close
+        OBJECTION → handle_objections
+        COLD / *  → follow_up
+    """
+    messages = state.get("messages", [])
+    last_human = next(
+        (m for m in reversed(messages) if isinstance(m, HumanMessage)),
+        None,
+    )
+    if last_human is None:
+        return "follow_up"
+
+    template = (_PROMPTS_DIR / "router_reaction.md").read_text(encoding="utf-8")
+    prompt = template.format(last_message=last_human.content)
+
+    llm = get_llm()
+    raw = await llm.chat(
+        [{"role": "user", "content": prompt}],
+        temperature=0.0,
+    )
+
+    label = raw.strip().upper()
+    return _REACTION_MAP.get(label, "follow_up")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Graph builder
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -68,15 +114,15 @@ def build_graph() -> StateGraph:
     """Build and return the uncompiled sales StateGraph."""
     builder = StateGraph(SalesState)
 
-    # Real nodes
-    builder.add_node("intake", intake)
-    builder.add_node("consult", consult)
+    # ── Real nodes ──────────────────────────────────────────────────────────
+    builder.add_node("intake",         intake)
+    builder.add_node("consult",        consult)
+    builder.add_node("recommend",      recommend)
+    builder.add_node("present_price",  present_price)
 
-    # Stub nodes (to be implemented in future sprints)
+    # ── Stub nodes (future sprints) ─────────────────────────────────────────
     for name in (
         "qualify_deep",
-        "recommend",
-        "present_price",
         "handle_objections",
         "close",
         "follow_up",
@@ -85,7 +131,7 @@ def build_graph() -> StateGraph:
     ):
         builder.add_node(name, _stub(name))
 
-    # Edges
+    # ── Edges ────────────────────────────────────────────────────────────────
     builder.add_edge(START, "intake")
     builder.add_edge("intake", "consult")
 
@@ -102,9 +148,9 @@ def build_graph() -> StateGraph:
         "present_price",
         router_reaction,
         {
+            "close":             "close",
             "handle_objections": "handle_objections",
-            "close": "close",
-            "follow_up": "follow_up",
+            "follow_up":         "follow_up",
         },
     )
 

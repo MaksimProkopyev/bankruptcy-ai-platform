@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from leadgen.routers import ai, leads, prospects, stats, webhooks
+from leadgen.routers import ai, leads, prospects, sales_agent, stats, webhooks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,6 +27,9 @@ app.include_router(leads.router, prefix="/api/v1/leads", tags=["leads"])
 app.include_router(prospects.router, prefix="/api/v1/prospects", tags=["prospects"])
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai"])
 app.include_router(stats.router, prefix="/api/v1", tags=["stats"])
+app.include_router(
+    sales_agent.router, prefix="/api/v1/internal", tags=["internal"]
+)
 
 
 @app.get("/health")

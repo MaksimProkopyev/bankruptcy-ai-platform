@@ -116,37 +116,24 @@ async def test_intake_loads_lead():
 
 @pytest.mark.asyncio
 async def test_consult_generates_reply():
+    import httpx as _httpx
     from agents.sales.llm import PROVIDERS
-
-    # Find the first provider whose key(s) are configured
-    provider = None
-    for name in [
-        "claude", "openai", "deepseek", "mistral",
-        "grok", "gemini", "alibaba", "gigachat", "yandex",
-    ]:
-        cfg = PROVIDERS[name]
-        if name == "gigachat":
-            if os.getenv("GIGACHAT_CLIENT_ID") and os.getenv("GIGACHAT_CLIENT_SECRET"):
-                provider = name
-                break
-        elif name == "yandex":
-            if os.getenv("YANDEX_API_KEY") and os.getenv("YANDEX_FOLDER_ID"):
-                provider = name
-                break
-        else:
-            if os.getenv(cfg["env_key"]):
-                provider = name
-                break
-
-    if provider is None:
-        pytest.skip("No LLM API key configured — skipping LLM integration test")
-
-    # Temporarily set the provider
-    os.environ["LLM_PROVIDER"] = provider
-    os.environ.pop("LLM_MODEL", None)  # use provider default
-
     from agents.sales.nodes.consult import consult
     from agents.sales.state import SalesState
+
+    # Build ordered list of candidates that have keys configured
+    candidates = []
+    for name in ["deepseek", "mistral", "claude", "openai", "grok", "gemini", "alibaba"]:
+        cfg = PROVIDERS[name]
+        if os.getenv(cfg["env_key"]):
+            candidates.append(name)
+    if os.getenv("GIGACHAT_CLIENT_ID") and os.getenv("GIGACHAT_CLIENT_SECRET"):
+        candidates.append("gigachat")
+    if os.getenv("YANDEX_API_KEY") and os.getenv("YANDEX_FOLDER_ID"):
+        candidates.append("yandex")
+
+    if not candidates:
+        pytest.skip("No LLM API key configured — skipping LLM integration test")
 
     state: SalesState = {
         "lead_id":        "test-consult-999",
@@ -165,16 +152,22 @@ async def test_consult_generates_reply():
         "hil_pending":    False,
     }
 
-    import httpx as _httpx
-    try:
-        patch = await consult(state)
-    except _httpx.HTTPStatusError as exc:
-        if exc.response.status_code in (401, 403):
-            pytest.skip(
-                f"Provider {provider!r} returned {exc.response.status_code} — "
-                "API key is a placeholder or invalid"
-            )
-        raise
+    patch = None
+    last_err = None
+    for provider in candidates:
+        os.environ["LLM_PROVIDER"] = provider
+        os.environ.pop("LLM_MODEL", None)
+        try:
+            patch = await consult(state)
+            break  # success
+        except _httpx.HTTPStatusError as exc:
+            if exc.response.status_code < 500:  # any 4xx: auth/geo/payment/rate-limit
+                last_err = f"{provider} → {exc.response.status_code}"
+                continue
+            raise
+
+    if patch is None:
+        pytest.skip(f"All providers failed ({last_err}) — no working LLM available")
 
     # One AI message returned
     assert len(patch["messages"]) == 1, (

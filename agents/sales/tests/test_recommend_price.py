@@ -142,30 +142,24 @@ async def test_router_reaction_no_human_message():
 
 @pytest.mark.asyncio
 async def test_present_price_judicial():
+    import httpx
     from agents.sales.llm import PROVIDERS
+    from agents.sales.nodes.present_price import present_price
 
-    # Find first provider with a real-looking key
-    provider = None
-    for name in ["claude", "openai", "deepseek", "mistral", "grok", "gemini", "alibaba"]:
+    # Build ordered list of candidates with real-looking keys
+    candidates = []
+    for name in ["deepseek", "mistral", "claude", "openai", "grok", "gemini", "alibaba"]:
         cfg = PROVIDERS[name]
         key = os.getenv(cfg["env_key"], "")
         if key and "placeholder" not in key.lower() and "temporary" not in key.lower():
-            provider = name
-            break
-    # Also check gigachat / yandex
-    if provider is None:
-        if (os.getenv("GIGACHAT_CLIENT_ID") and os.getenv("GIGACHAT_CLIENT_SECRET")):
-            provider = "gigachat"
-        elif (os.getenv("YANDEX_API_KEY") and os.getenv("YANDEX_FOLDER_ID")):
-            provider = "yandex"
+            candidates.append(name)
+    if os.getenv("GIGACHAT_CLIENT_ID") and os.getenv("GIGACHAT_CLIENT_SECRET"):
+        candidates.append("gigachat")
+    if os.getenv("YANDEX_API_KEY") and os.getenv("YANDEX_FOLDER_ID"):
+        candidates.append("yandex")
 
-    if provider is None:
+    if not candidates:
         pytest.skip("No real LLM API key configured")
-
-    os.environ["LLM_PROVIDER"] = provider
-    os.environ.pop("LLM_MODEL", None)
-
-    from agents.sales.nodes.present_price import present_price
 
     state = _make_state(
         debt_amount=1_200_000,
@@ -175,13 +169,22 @@ async def test_present_price_judicial():
         product_recommended="judicial",
     )
 
-    import httpx
-    try:
-        patch_result = await present_price(state)
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code in (401, 403):
-            pytest.skip(f"Provider {provider!r} returned {exc.response.status_code} — key invalid")
-        raise
+    patch_result = None
+    last_err = None
+    for provider in candidates:
+        os.environ["LLM_PROVIDER"] = provider
+        os.environ.pop("LLM_MODEL", None)
+        try:
+            patch_result = await present_price(state)
+            break  # success
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code < 500:  # any 4xx: auth/geo/payment/rate-limit
+                last_err = f"{provider} → {exc.response.status_code}"
+                continue
+            raise
+
+    if patch_result is None:
+        pytest.skip(f"All providers failed ({last_err}) — no working LLM available")
 
     assert len(patch_result["messages"]) == 1
     reply = patch_result["messages"][0].content

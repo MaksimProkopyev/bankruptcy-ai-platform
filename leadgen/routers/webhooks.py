@@ -1,11 +1,12 @@
 import logging
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from leadgen.adapters.web_form import WebFormAdapter
 from leadgen.database import get_db
 from leadgen.services import lead_service
+from leadgen.services.agent_trigger import trigger_sales_agent
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -16,12 +17,22 @@ _web_adapter = WebFormAdapter()
 @router.post("/web-form")
 async def web_form_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Принимает заявку с веб-формы сайта."""
     payload = await request.json()
     event = await _web_adapter.normalize(payload)
     lead = await lead_service.process_incoming_event(db, event)
+
+    background_tasks.add_task(
+        trigger_sales_agent,
+        lead_id=str(lead.id),
+        message_text=event.message,
+        channel=str(event.channel.value),
+        adapter=_web_adapter,
+    )
+
     return {"lead_id": str(lead.id), "status": lead.status}
 
 
@@ -53,7 +64,6 @@ async def vk_webhook(request: Request) -> str:
     """Принимает события от VK Callback API (обработка в следующем спринте)."""
     payload = await request.json()
     logger.info(f"VK webhook received: type={payload.get('type')}")
-    # VK требует вернуть строку "ok" на confirmation и события
     if payload.get("type") == "confirmation":
         return "ok"
     return "ok"

@@ -1,9 +1,17 @@
-"""Sales graph — StateGraph[SalesState].
+"""Sales graph — StateGraph[SalesState].  COMPLETE.
 
-Real nodes: intake, consult, recommend, present_price.
-Stub nodes: qualify_deep, handle_objections, close, follow_up,
-            handoff_to_crm, end_lost.
-Async LLM router: router_reaction (classifies lead's reaction to price).
+All nodes implemented:
+  intake, consult, recommend, present_price,
+  handle_objections, close, follow_up, handoff_to_crm.
+
+Stubs remaining:
+  qualify_deep, end_lost.
+
+Async LLM routers:
+  router_reaction   — after present_price
+  router_convinced  — after handle_objections
+  router_signed     — after close
+  router_alive      — after follow_up
 
 Compile with a checkpointer:
 
@@ -20,7 +28,11 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import END, START, StateGraph
 
 from .llm import get_llm
+from .nodes.close import close
 from .nodes.consult import consult
+from .nodes.follow_up import follow_up
+from .nodes.handle_objections import handle_objections
+from .nodes.handoff_to_crm import handoff_to_crm
 from .nodes.intake import intake
 from .nodes.present_price import present_price
 from .nodes.recommend import recommend
@@ -43,7 +55,7 @@ def _stub(node_name: str):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Sync routers (no LLM needed)
+# Sync router (no LLM)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def router_data_complete(state: SalesState) -> str:
@@ -51,23 +63,8 @@ def router_data_complete(state: SalesState) -> str:
     return "recommend"
 
 
-def router_convinced(state: SalesState) -> str:
-    """handle_objections → close | follow_up"""
-    return "close"
-
-
-def router_signed(state: SalesState) -> str:
-    """close → handoff_to_crm | follow_up"""
-    return "handoff_to_crm"
-
-
-def router_alive(state: SalesState) -> str:
-    """follow_up → present_price | end_lost"""
-    return "present_price"
-
-
 # ─────────────────────────────────────────────────────────────────────────────
-# Async LLM router — present_price reaction classifier
+# Async LLM routers
 # ─────────────────────────────────────────────────────────────────────────────
 
 _REACTION_MAP = {
@@ -76,19 +73,15 @@ _REACTION_MAP = {
     "COLD":      "follow_up",
 }
 
-async def router_reaction(state: SalesState) -> str:
-    """Classify the lead's reaction to the price presentation.
 
-    Reads the last HumanMessage, calls the LLM with router_reaction.md,
-    and maps the response to a graph edge:
-        AGREE     → close
-        OBJECTION → handle_objections
-        COLD / *  → follow_up
+async def router_reaction(state: SalesState) -> str:
+    """Classify the lead's first reaction to the price.
+
+    AGREE → close | OBJECTION → handle_objections | COLD/* → follow_up
     """
     messages = state.get("messages", [])
     last_human = next(
-        (m for m in reversed(messages) if isinstance(m, HumanMessage)),
-        None,
+        (m for m in reversed(messages) if isinstance(m, HumanMessage)), None
     )
     if last_human is None:
         return "follow_up"
@@ -97,13 +90,102 @@ async def router_reaction(state: SalesState) -> str:
     prompt = template.format(last_message=last_human.content)
 
     llm = get_llm()
-    raw = await llm.chat(
-        [{"role": "user", "content": prompt}],
-        temperature=0.0,
+    raw = await llm.chat([{"role": "user", "content": prompt}], temperature=0.0)
+    return _REACTION_MAP.get(raw.strip().upper(), "follow_up")
+
+
+async def router_convinced(state: SalesState) -> str:
+    """Classify the lead's response after objection handling.
+
+    CONVINCED → close
+    DOUBT     → handle_objections (if followup_count < 3) | follow_up
+    LOST/*    → follow_up
+    """
+    messages = state.get("messages", [])
+    last_human = next(
+        (m for m in reversed(messages) if isinstance(m, HumanMessage)), None
+    )
+    if last_human is None:
+        return "follow_up"
+
+    prompt = (
+        f"Клиент ответил на обработку возражения: '{last_human.content}'\n"
+        "Верни одно слово:\n"
+        "CONVINCED — готов двигаться к оформлению\n"
+        "DOUBT     — всё ещё сомневается, нужна ещё работа\n"
+        "LOST      — явно отказывается"
     )
 
+    llm = get_llm()
+    raw = await llm.chat([{"role": "user", "content": prompt}], temperature=0.0)
     label = raw.strip().upper()
-    return _REACTION_MAP.get(label, "follow_up")
+
+    if label == "CONVINCED":
+        return "close"
+    if label == "DOUBT":
+        followup_count = state.get("context", {}).get("followup_count", 0)
+        return "handle_objections" if followup_count < 3 else "follow_up"
+    return "follow_up"   # LOST or unknown
+
+
+async def router_signed(state: SalesState) -> str:
+    """Classify the lead's response to the contract request.
+
+    SIGNED → handoff_to_crm | PENDING/DECLINED/* → follow_up
+    """
+    messages = state.get("messages", [])
+    last_human = next(
+        (m for m in reversed(messages) if isinstance(m, HumanMessage)), None
+    )
+    if last_human is None:
+        return "follow_up"
+
+    prompt = (
+        f"Клиент ответил после запроса на подписание договора: '{last_human.content}'\n"
+        "Верни одно слово:\n"
+        "SIGNED    — дал email/контакт, согласился получить договор\n"
+        "PENDING   — не против но нужно время / уточняет детали\n"
+        "DECLINED  — отказывается"
+    )
+
+    llm = get_llm()
+    raw = await llm.chat([{"role": "user", "content": prompt}], temperature=0.0)
+    label = raw.strip().upper()
+
+    if label == "SIGNED":
+        return "handoff_to_crm"
+    return "follow_up"   # PENDING, DECLINED, or unknown
+
+
+async def router_alive(state: SalesState) -> str:
+    """Classify the lead's response after a follow-up attempt.
+
+    Short-circuits to end_lost if followup_count >= 3.
+    ALIVE → present_price | DEAD/* → end_lost
+    """
+    followup_count = state.get("context", {}).get("followup_count", 0)
+    if followup_count >= 3:
+        return "end_lost"
+
+    messages = state.get("messages", [])
+    last_human = next(
+        (m for m in reversed(messages) if isinstance(m, HumanMessage)), None
+    )
+    if last_human is None:
+        return "end_lost"
+
+    prompt = (
+        f"Клиент ответил после follow-up: '{last_human.content}'\n"
+        "Верни одно слово:\n"
+        "ALIVE — клиент отвечает, есть интерес возобновить разговор\n"
+        "DEAD  — не отвечает или явный отказ"
+    )
+
+    llm = get_llm()
+    raw = await llm.chat([{"role": "user", "content": prompt}], temperature=0.0)
+    label = raw.strip().upper()
+
+    return "present_price" if label == "ALIVE" else "end_lost"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -111,25 +193,22 @@ async def router_reaction(state: SalesState) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_graph() -> StateGraph:
-    """Build and return the uncompiled sales StateGraph."""
+    """Build and return the complete (uncompiled) sales StateGraph."""
     builder = StateGraph(SalesState)
 
     # ── Real nodes ──────────────────────────────────────────────────────────
-    builder.add_node("intake",         intake)
-    builder.add_node("consult",        consult)
-    builder.add_node("recommend",      recommend)
-    builder.add_node("present_price",  present_price)
+    builder.add_node("intake",             intake)
+    builder.add_node("consult",            consult)
+    builder.add_node("recommend",          recommend)
+    builder.add_node("present_price",      present_price)
+    builder.add_node("handle_objections",  handle_objections)
+    builder.add_node("close",              close)
+    builder.add_node("follow_up",          follow_up)
+    builder.add_node("handoff_to_crm",     handoff_to_crm)
 
-    # ── Stub nodes (future sprints) ─────────────────────────────────────────
-    for name in (
-        "qualify_deep",
-        "handle_objections",
-        "close",
-        "follow_up",
-        "handoff_to_crm",
-        "end_lost",
-    ):
-        builder.add_node(name, _stub(name))
+    # ── Stub nodes ──────────────────────────────────────────────────────────
+    builder.add_node("qualify_deep", _stub("qualify_deep"))
+    builder.add_node("end_lost",     _stub("end_lost"))
 
     # ── Edges ────────────────────────────────────────────────────────────────
     builder.add_edge(START, "intake")
@@ -157,7 +236,11 @@ def build_graph() -> StateGraph:
     builder.add_conditional_edges(
         "handle_objections",
         router_convinced,
-        {"close": "close", "follow_up": "follow_up"},
+        {
+            "close":             "close",
+            "handle_objections": "handle_objections",
+            "follow_up":         "follow_up",
+        },
     )
 
     builder.add_conditional_edges(
